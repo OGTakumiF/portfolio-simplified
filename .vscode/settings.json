@@ -1,0 +1,6 @@
+{
+  // Silence VS Code CSS language server warnings for Tailwind directives
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore",
+  "less.lint.unknownAtRules": "ignore"
+}
