@@ -3,10 +3,17 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Text, Float, Stars, OrbitControls, Environment, Sparkles, Trail, Sphere, MeshDistortMaterial, Html } from '@react-three/drei';
 import {
   Menu, X, Github, Linkedin, Mail, ChevronDown, ExternalLink,
-  Zap, Music, Heart, Target, Trophy, Briefcase, ArrowRight, Sparkles as SparklesIcon
+  Zap, Music, Heart, Target, Trophy, Briefcase, ArrowRight, Sparkles as SparklesIcon, ArrowLeft
 } from 'lucide-react';
 import * as THREE from 'three';
 import gsap from 'gsap';
+
+interface Planet {
+  id: string;
+  title: string;
+  color: string;
+  darkColor: string;
+}
 
 interface Section {
   id: string;
@@ -18,7 +25,7 @@ interface Section {
   content: {
     heading: string;
     description: string;
-    details: string[];
+    planets: Planet[];
     highlights?: string[];
   };
 }
@@ -34,13 +41,13 @@ const sections: Section[] = [
     content: {
       heading: 'Sustainable Infrastructure Engineer',
       description: 'Specialized in Railway Engineering & Power Systems',
-      details: [
-        'Bachelor in Sustainable Infrastructure Engineering (Land)',
-        'Diploma in Electrical Engineering (Power)',
-        'Railway systems, track design, and signaling expertise',
-        'Power distribution and control systems',
-        'Sustainable transport solutions',
-        'Expert in infrastructure project management'
+      planets: [
+        { id: 'p1', title: 'Bachelor in Sustainable Infrastructure Engineering (Land)', color: '#38bdf8', darkColor: '#0c4a6e' },
+        { id: 'p2', title: 'Diploma in Electrical Engineering (Power)', color: '#38bdf8', darkColor: '#0c4a6e' },
+        { id: 'p3', title: 'Railway systems, track design, and signaling expertise', color: '#38bdf8', darkColor: '#0c4a6e' },
+        { id: 'p4', title: 'Power distribution and control systems', color: '#38bdf8', darkColor: '#0c4a6e' },
+        { id: 'p5', title: 'Sustainable transport solutions', color: '#38bdf8', darkColor: '#0c4a6e' },
+        { id: 'p6', title: 'Expert in infrastructure project management', color: '#38bdf8', darkColor: '#0c4a6e' }
       ],
       highlights: ['Railway Systems', 'Power Distribution', 'Infrastructure Design']
     }
@@ -55,13 +62,13 @@ const sections: Section[] = [
     content: {
       heading: 'Musician & Performer',
       description: 'Trained violinist with vocal capabilities',
-      details: [
-        'Classical violin performance and training',
-        'Vocal training and professional performance',
-        'Voice-over work for media projects',
-        'Studio recording experience',
-        'Music production and arrangement',
-        'Performance in orchestral and chamber settings'
+      planets: [
+        { id: 'm1', title: 'Classical violin performance and training', color: '#f472b6', darkColor: '#831843' },
+        { id: 'm2', title: 'Vocal training and professional performance', color: '#f472b6', darkColor: '#831843' },
+        { id: 'm3', title: 'Voice-over work for media projects', color: '#f472b6', darkColor: '#831843' },
+        { id: 'm4', title: 'Studio recording experience', color: '#f472b6', darkColor: '#831843' },
+        { id: 'm5', title: 'Music production and arrangement', color: '#f472b6', darkColor: '#831843' },
+        { id: 'm6', title: 'Performance in orchestral and chamber settings', color: '#f472b6', darkColor: '#831843' }
       ],
       highlights: ['Violin', 'Vocals', 'Performance']
     }
@@ -76,13 +83,13 @@ const sections: Section[] = [
     content: {
       heading: 'Psychology & Advisory',
       description: 'Passionate about understanding and helping others',
-      details: [
-        'Regular advisor for friends and family',
-        'Community support and mentorship',
-        'Deep understanding of human behavior',
-        'Empathetic problem-solving approach',
-        'Personal and professional development focus',
-        'Conflict resolution and mediation'
+      planets: [
+        { id: 'ps1', title: 'Regular advisor for friends and family', color: '#fb7185', darkColor: '#7f1d1d' },
+        { id: 'ps2', title: 'Community support and mentorship', color: '#fb7185', darkColor: '#7f1d1d' },
+        { id: 'ps3', title: 'Deep understanding of human behavior', color: '#fb7185', darkColor: '#7f1d1d' },
+        { id: 'ps4', title: 'Empathetic problem-solving approach', color: '#fb7185', darkColor: '#7f1d1d' },
+        { id: 'ps5', title: 'Personal and professional development focus', color: '#fb7185', darkColor: '#7f1d1d' },
+        { id: 'ps6', title: 'Conflict resolution and mediation', color: '#fb7185', darkColor: '#7f1d1d' }
       ],
       highlights: ['Mentorship', 'Counseling', 'Development']
     }
@@ -97,13 +104,13 @@ const sections: Section[] = [
     content: {
       heading: 'Motorsports Enthusiast',
       description: 'Speed, precision, and engineering excellence',
-      details: [
-        'Deep interest in vehicle dynamics and performance',
-        'Racing strategy and competitive analytics',
-        'High-performance engineering principles',
-        'Motorsports technology and innovations',
-        'Track day experience and driver training',
-        'Passion for precision and speed'
+      planets: [
+        { id: 'mo1', title: 'Deep interest in vehicle dynamics and performance', color: '#fcd34d', darkColor: '#78350f' },
+        { id: 'mo2', title: 'Racing strategy and competitive analytics', color: '#fcd34d', darkColor: '#78350f' },
+        { id: 'mo3', title: 'High-performance engineering principles', color: '#fcd34d', darkColor: '#78350f' },
+        { id: 'mo4', title: 'Motorsports technology and innovations', color: '#fcd34d', darkColor: '#78350f' },
+        { id: 'mo5', title: 'Track day experience and driver training', color: '#fcd34d', darkColor: '#78350f' },
+        { id: 'mo6', title: 'Passion for precision and speed', color: '#fcd34d', darkColor: '#78350f' }
       ],
       highlights: ['Performance', 'Dynamics', 'Racing']
     }
@@ -118,13 +125,13 @@ const sections: Section[] = [
     content: {
       heading: 'Archery Practice',
       description: 'Focus, discipline, and precision mastery',
-      details: [
-        'Regular competitive archery practice',
-        'Mental discipline and focus training',
-        'Precision accuracy development',
-        'Tournament participation and ranking',
-        'Translates engineering mindset to athletics',
-        'Continuous improvement philosophy'
+      planets: [
+        { id: 'a1', title: 'Regular competitive archery practice', color: '#4ade80', darkColor: '#064e3b' },
+        { id: 'a2', title: 'Mental discipline and focus training', color: '#4ade80', darkColor: '#064e3b' },
+        { id: 'a3', title: 'Precision accuracy development', color: '#4ade80', darkColor: '#064e3b' },
+        { id: 'a4', title: 'Tournament participation and ranking', color: '#4ade80', darkColor: '#064e3b' },
+        { id: 'a5', title: 'Translates engineering mindset to athletics', color: '#4ade80', darkColor: '#064e3b' },
+        { id: 'a6', title: 'Continuous improvement philosophy', color: '#4ade80', darkColor: '#064e3b' }
       ],
       highlights: ['Precision', 'Focus', 'Discipline']
     }
@@ -139,13 +146,13 @@ const sections: Section[] = [
     content: {
       heading: 'Multi-Disciplinary Excellence',
       description: 'Combining technical expertise with creative passion',
-      details: [
-        'Dual engineering qualifications recognized internationally',
-        'Active community involvement and leadership',
-        'Award-winning musician with regional recognition',
-        'Technical leadership in multiple fields',
-        'Continuous learner and innovator',
-        'Bridging engineering, arts, and personal development'
+      planets: [
+        { id: 'ac1', title: 'Dual engineering qualifications recognized internationally', color: '#fde047', darkColor: '#713f12' },
+        { id: 'ac2', title: 'Active community involvement and leadership', color: '#fde047', darkColor: '#713f12' },
+        { id: 'ac3', title: 'Award-winning musician with regional recognition', color: '#fde047', darkColor: '#713f12' },
+        { id: 'ac4', title: 'Technical leadership in multiple fields', color: '#fde047', darkColor: '#713f12' },
+        { id: 'ac5', title: 'Continuous learner and innovator', color: '#fde047', darkColor: '#713f12' },
+        { id: 'ac6', title: 'Bridging engineering, arts, and personal development', color: '#fde047', darkColor: '#713f12' }
       ],
       highlights: ['Excellence', 'Leadership', 'Innovation']
     }
@@ -200,10 +207,11 @@ function ParticleField() {
   );
 }
 
-function AnimatedOrbital({ section, onClick, isActive }: {
+function AnimatedOrbital({ section, onClick, isActive, orbit }: {
   section: Section;
-  onClick: () => void;
+  onClick: (currentPos: THREE.Vector3) => void;
   isActive: boolean;
+  orbit?: { radius: number; speed: number; phase: number; y?: number };
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const glowRef = useRef<THREE.Mesh>(null);
@@ -211,8 +219,20 @@ function AnimatedOrbital({ section, onClick, isActive }: {
   const [hovered, setHovered] = useState(false);
   const pointLightRef = useRef<THREE.PointLight>(null);
   const trailRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
 
   useFrame((state) => {
+    // Orbit the group around the origin if orbit settings are provided
+    if (groupRef.current && orbit) {
+      const angle = state.clock.elapsedTime * orbit.speed + orbit.phase;
+      const y = orbit.y ?? section.position[1] ?? 0;
+      groupRef.current.position.set(
+        Math.cos(angle) * orbit.radius,
+        y,
+        Math.sin(angle) * orbit.radius
+      );
+    }
+
     if (meshRef.current) {
       meshRef.current.rotation.x += 0.01;
       meshRef.current.rotation.y += 0.015;
@@ -255,7 +275,7 @@ function AnimatedOrbital({ section, onClick, isActive }: {
 
   return (
     <Float speed={2} rotationIntensity={0.5} floatIntensity={1}>
-      <group position={section.position}>
+      <group ref={groupRef} position={section.position}>
         {/* Outer rotating ring */}
         <mesh ref={ringRef}>
           <torusGeometry args={[3.5, 0.15, 16, 100]} />
@@ -287,7 +307,7 @@ function AnimatedOrbital({ section, onClick, isActive }: {
         >
           <mesh
             ref={meshRef}
-            onClick={onClick}
+            onClick={() => onClick(groupRef.current ? groupRef.current.position.clone() : new THREE.Vector3(...section.position))}
             onPointerOver={() => setHovered(true)}
             onPointerOut={() => setHovered(false)}
           >
@@ -384,12 +404,103 @@ function AnimatedOrbital({ section, onClick, isActive }: {
   );
 }
 
+function GalaxyCenter({ section }: { section?: Section }) {
+  const shellRef = useRef<THREE.Mesh>(null);
+  useFrame((state) => {
+    if (shellRef.current) {
+      shellRef.current.rotation.y += 0.01;
+      shellRef.current.scale.x = 1 + Math.sin(state.clock.elapsedTime * 1.5) * 0.05;
+      shellRef.current.scale.y = 1 + Math.cos(state.clock.elapsedTime * 1.2) * 0.05;
+    }
+  });
+
+  const title = section ? section.title : 'Milky Way';
+  const color = section ? section.color : '#3b82f6';
+  const emissive = section ? section.color : '#60a5fa';
+
+  return (
+    <group position={[0, 1.5, 0]}>
+      <Sphere args={[3.5, 64, 64]} castShadow>
+        <meshStandardMaterial
+          color={color}
+          emissive={emissive}
+          emissiveIntensity={0.8}
+          metalness={0.6}
+          roughness={0.3}
+          transparent
+          opacity={0.95}
+        />
+      </Sphere>
+      <mesh ref={shellRef}>
+        <icosahedronGeometry args={[4.2, 2]} />
+        <meshBasicMaterial color={emissive} transparent opacity={0.2} wireframe />
+      </mesh>
+      <Sparkles count={300} scale={12} size={2} speed={0.3} opacity={0.6} color={emissive} />
+      <Text
+        position={[0, 6, 0]}
+        fontSize={1}
+        fontWeight="bold"
+        color="white"
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.12}
+        outlineColor="#000000"
+      >
+        {title}
+      </Text>
+    </group>
+  );
+}
+
+function SolarSystemView({ activeSection, planets, onPlanetClick }: { activeSection: Section, planets: Planet[], onPlanetClick: (planet: Planet) => void }) {
+  return (
+    <group>
+      {/* Render the central star */}
+      <GalaxyCenter section={activeSection} />
+
+      {/* Render the orbiting planets */}
+      {planets.map((planet, idx) => (
+        <AnimatedOrbital
+          key={planet.id}
+          section={{ 
+            id: planet.id,
+            title: planet.title,
+            position: [0, 0, 0],
+            color: planet.color,
+            darkColor: planet.darkColor,
+            icon: Zap, 
+            content: {
+              heading: '',
+              description: '',
+              planets: []
+            }
+          }}
+          onClick={() => onPlanetClick(planet)}
+          isActive={false}
+          orbit={{
+            radius: 5 + idx * 2,
+            speed: 0.3 + idx * 0.05,
+            phase: idx * ((Math.PI * 2) / planets.length),
+            y: 0
+          }}
+        />
+      ))}
+    </group>
+  );
+}
+
 function Scene3D({
   activeSection,
-  onSectionClick
+  onSectionClick,
+  view, // Add view prop
+  planets, // Add planets prop
+  onPlanetClick // Add onPlanetClick prop
 }: {
   activeSection: Section | null;
-  onSectionClick: (section: Section) => void;
+  onSectionClick: (section: Section, currentPos: THREE.Vector3) => void;
+  view: 'galaxy' | 'solarSystem'; // Define view type
+  planets: Planet[]; // Define planets type
+  onPlanetClick: (planet: Planet) => void; // Define onPlanetClick type
 }) {
   return (
     <>
@@ -408,12 +519,24 @@ function Scene3D({
 
       <ParticleField />
 
-      {sections.map((section) => (
+      {view === 'galaxy' ? (
+        <GalaxyCenter />
+      ) : (
+        <SolarSystemView activeSection={activeSection!} planets={planets} onPlanetClick={onPlanetClick} />
+      )}
+
+      {view === 'galaxy' && sections.map((section, idx) => (
         <AnimatedOrbital
           key={section.id}
           section={section}
-          onClick={() => onSectionClick(section)}
+          onClick={(pos) => onSectionClick(section, pos)}
           isActive={activeSection?.id === section.id}
+          orbit={{
+            radius: 10 + idx * 4,
+            speed: 0.2 + idx * 0.03,
+            phase: idx * ((Math.PI * 2) / sections.length),
+            y: 2
+          }}
         />
       ))}
 
@@ -425,27 +548,47 @@ function Scene3D({
 
 export default function AnimatedPortfolio() {
   const [activeSection, setActiveSection] = useState<Section | null>(null);
+  const [activePlanet, setActivePlanet] = useState<Planet | null>(null);
+  const [view, setView] = useState<'galaxy' | 'solarSystem'>('galaxy');
+  const [planets, setPlanets] = useState<Planet[]>([]);
   const [showMenu, setShowMenu] = useState(false);
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
   const controlsRef = useRef<any>(null);
 
-  const handleSectionClick = (section: Section) => {
+  const handleSectionClick = (section: Section, currentPos?: THREE.Vector3) => {
     setActiveSection(section);
+    setActivePlanet(null); // Reset active planet
     setShowMenu(false);
+    setView('solarSystem');
+    setPlanets(section.content.planets);
 
     if (controlsRef.current) {
+      // If we have the current orbiting position, use it; otherwise estimate based on index
+      const idx = sections.findIndex((s) => s.id === section.id);
+      const radius = 10 + idx * 4;
+      const phase = idx * ((Math.PI * 2) / sections.length);
+      const y = 2;
+      const target = currentPos ?? new THREE.Vector3(Math.cos(phase) * radius, y, Math.sin(phase) * radius);
+
       gsap.to(controlsRef.current.object.position, {
-        x: section.position[0] * 0.7,
-        y: section.position[1] + 8,
-        z: section.position[2] + 15,
+        x: target.x * 0.7,
+        y: target.y + 8,
+        z: target.z + 15,
         duration: 2,
         ease: 'power2.inOut'
       });
     }
   };
 
+  const handlePlanetClick = (planet: Planet) => {
+    setActivePlanet(planet);
+  };
+
   const resetView = () => {
     setActiveSection(null);
+    setActivePlanet(null);
+    setView('galaxy');
+    setPlanets([]);
     if (controlsRef.current) {
       gsap.to(controlsRef.current.object.position, {
         x: 0,
@@ -468,6 +611,16 @@ export default function AnimatedPortfolio() {
             <SparklesIcon className="w-5 h-5 group-hover:rotate-12 transition-transform" />
             <span>Sean Ogta Goh</span>
           </button>
+
+          {view === 'solarSystem' && (
+            <button
+              onClick={resetView}
+              className="text-white hover:text-cyan-400 transition-all p-2 hover:bg-slate-800/50 rounded-lg flex items-center space-x-2"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span>Back to Galaxy</span>
+            </button>
+          )}
 
           <button
             onClick={() => setShowMenu(!showMenu)}
@@ -515,7 +668,7 @@ export default function AnimatedPortfolio() {
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40">
         <div className="text-center space-y-3">
           <p className="text-white/70 text-sm bg-slate-900/80 backdrop-blur-md px-6 py-3 rounded-full border border-slate-700/50 font-medium">
-            ✨ Click orbs to explore • Drag to rotate • Scroll to zoom
+            🌌 Milky Way at center • Planets are sections • Click to explore
           </p>
         </div>
       </div>
@@ -527,10 +680,16 @@ export default function AnimatedPortfolio() {
         <Suspense fallback={null}>
           <color attach="background" args={['#0a0a15']} />
           <fog attach="fog" args={['#0a0a15', 25, 90]} />
-
-          <Scene3D activeSection={activeSection} onSectionClick={handleSectionClick} />
-
-          <OrbitControls
+ 
+           <Scene3D 
+             activeSection={activeSection} 
+             onSectionClick={handleSectionClick} 
+             view={view} 
+             planets={planets} 
+             onPlanetClick={handlePlanetClick} 
+           />
+ 
+           <OrbitControls
             ref={controlsRef}
             enablePan={false}
             enableZoom={true}
@@ -545,125 +704,29 @@ export default function AnimatedPortfolio() {
         </Suspense>
       </Canvas>
 
-      {activeSection && (
+      {activePlanet && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md transition-opacity"
-          onClick={() => setActiveSection(null)}
+          onClick={() => setActivePlanet(null)}
         >
           <div
-            className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 rounded-3xl p-8 md:p-12 max-w-4xl w-full border shadow-2xl transform transition-all animate-fade-in relative overflow-hidden"
+            className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 rounded-3xl p-8 md:p-12 max-w-2xl w-full border shadow-2xl transform transition-all animate-fade-in relative overflow-hidden"
             style={{
-              borderColor: activeSection.color,
+              borderColor: activePlanet.color,
               borderWidth: '2px',
-              boxShadow: `0 0 80px ${activeSection.color}60`
+              boxShadow: `0 0 80px ${activePlanet.color}60`
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div
-              className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-15 blur-3xl"
-              style={{ backgroundColor: activeSection.color }}
-            ></div>
-
             <button
-              onClick={() => setActiveSection(null)}
+              onClick={() => setActivePlanet(null)}
               className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors bg-slate-700/50 p-3 rounded-xl hover:bg-slate-700 z-10"
             >
               <X className="w-6 h-6" />
             </button>
-
-            <div className="relative z-10">
-              <div className="flex items-start space-x-6 mb-8">
-                <div
-                  className="w-24 h-24 rounded-2xl flex items-center justify-center shadow-2xl flex-shrink-0 relative"
-                  style={{ backgroundColor: activeSection.color }}
-                >
-                  <activeSection.icon className="w-12 h-12 text-white" />
-                  <div
-                    className="absolute inset-0 rounded-2xl opacity-30"
-                    style={{
-                      boxShadow: `inset 0 0 20px ${activeSection.color}`
-                    }}
-                  ></div>
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-4xl md:text-5xl font-black text-white mb-3">
-                    {activeSection.content.heading}
-                  </h2>
-                  <p className="text-xl text-slate-300 font-semibold">
-                    {activeSection.content.description}
-                  </p>
-                </div>
-              </div>
-
-              {activeSection.content.highlights && (
-                <div className="flex flex-wrap gap-3 mb-8">
-                  {activeSection.content.highlights.map((highlight, index) => (
-                    <span
-                      key={index}
-                      className="px-4 py-2 rounded-full text-sm font-bold text-white"
-                      style={{
-                        backgroundColor: activeSection.color + '25',
-                        color: activeSection.color,
-                        border: `1px solid ${activeSection.color}60`
-                      }}
-                    >
-                      {highlight}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <div className="grid md:grid-cols-2 gap-4 mb-8">
-                {activeSection.content.details.map((detail, index) => (
-                  <div
-                    key={index}
-                    className="flex items-start space-x-3 bg-slate-800/50 p-4 rounded-xl border border-slate-700/30 hover:border-slate-600/50 transition-colors"
-                  >
-                    <div
-                      className="w-2 h-2 rounded-full mt-2.5 flex-shrink-0"
-                      style={{ backgroundColor: activeSection.color }}
-                    ></div>
-                    <p className="text-slate-200 text-base leading-relaxed">{detail}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-center space-x-4 pt-8 border-t border-slate-700/50">
-                <a
-                  href="https://www.linkedin.com/in/sean-ogta-goh"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onMouseEnter={() => setHoveredLink('linkedin')}
-                  onMouseLeave={() => setHoveredLink(null)}
-                  className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white px-6 py-3 rounded-xl transition-all hover:scale-110 font-semibold shadow-lg"
-                >
-                  <Linkedin className="w-5 h-5" />
-                  <span>LinkedIn</span>
-                  {hoveredLink === 'linkedin' && <ExternalLink className="w-4 h-4" />}
-                </a>
-                <a
-                  href="https://github.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onMouseEnter={() => setHoveredLink('github')}
-                  onMouseLeave={() => setHoveredLink(null)}
-                  className="flex items-center space-x-2 bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-xl transition-all hover:scale-110 font-semibold shadow-lg"
-                >
-                  <Github className="w-5 h-5" />
-                  <span>GitHub</span>
-                  {hoveredLink === 'github' && <ExternalLink className="w-4 h-4" />}
-                </a>
-                <a
-                  href="mailto:sean.goh@example.com"
-                  onMouseEnter={() => setHoveredLink('email')}
-                  onMouseLeave={() => setHoveredLink(null)}
-                  className="flex items-center space-x-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white px-6 py-3 rounded-xl transition-all hover:scale-110 font-semibold shadow-lg"
-                >
-                  <Mail className="w-5 h-5" />
-                  <span>Email</span>
-                  {hoveredLink === 'email' && <ExternalLink className="w-4 h-4" />}
-                </a>
-              </div>
+            <div className="relative z-10 text-center">
+              <h2 className="text-3xl font-black text-white mb-4">{activePlanet.title}</h2>
+              <p className="text-lg text-slate-300">Detailed information about this achievement or skill would be displayed here.</p>
             </div>
           </div>
         </div>
