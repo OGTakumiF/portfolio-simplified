@@ -8,6 +8,26 @@ import {
 import * as THREE from 'three';
 import gsap from 'gsap';
 
+// --- ADDED SHADERS ---
+const vertexShader = `
+  varying vec3 vNormal;
+  void main() {
+    vNormal = normalize( normalMatrix * normal );
+    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+  }
+`;
+
+const fragmentShader = `
+  varying vec3 vNormal;
+  uniform vec3 glowColor;
+  void main() {
+    // This creates a glowing rim effect (Fresnel)
+    float intensity = pow( 0.6 - dot( vNormal, vec3( 0.0, 0.0, 1.0 ) ), 2.0 );
+    gl_FragColor = vec4( glowColor, 1.0 ) * intensity * 0.8;
+  }
+`;
+// --- END OF SHADERS ---
+
 interface Planet {
   id: string;
   title: string;
@@ -254,12 +274,8 @@ function AnimatedOrbital({ section, onClick, isActive, orbit }: {
 
     if (ringRef.current) {
       ringRef.current.rotation.y += 0.02;
-      ringRef.current.rotation.x = Math.sin(state.clock.elapsedTime) * 0.3;
-      ringRef.current.scale.set(
-        1 + Math.sin(state.clock.elapsedTime * 2) * 0.3,
-        1 + Math.sin(state.clock.elapsedTime * 2) * 0.3,
-        1
-      );
+      // Keep the ring's x rotation tilted, but allow for a slight wobble
+      ringRef.current.rotation.x = (Math.PI * 0.4) + (Math.sin(state.clock.elapsedTime) * 0.1);
     }
 
     if (pointLightRef.current) {
@@ -276,14 +292,14 @@ function AnimatedOrbital({ section, onClick, isActive, orbit }: {
   return (
     <Float speed={2} rotationIntensity={0.5} floatIntensity={1}>
       <group ref={groupRef} position={section.position}>
-        {/* Outer rotating ring */}
-        <mesh ref={ringRef}>
-          <torusGeometry args={[3.5, 0.15, 16, 100]} />
+        {/* Flat, tilted ring --- MODIFIED --- */}
+        <mesh ref={ringRef} rotation-x={Math.PI * 0.4}>
+          <ringGeometry args={[3.2, 3.8, 64]} />
           <meshBasicMaterial
             color={section.color}
             transparent
-            opacity={isActive ? 0.8 : 0.3}
-            wireframe={false}
+            opacity={isActive ? 0.6 : 0.2}
+            side={THREE.DoubleSide}
           />
         </mesh>
 
@@ -324,14 +340,18 @@ function AnimatedOrbital({ section, onClick, isActive, orbit }: {
           </mesh>
         </Trail>
 
-        {/* Glowing outer shell */}
+        {/* Glowing Atmosphere --- MODIFIED --- */}
         <mesh ref={glowRef}>
-          <icosahedronGeometry args={[2.5, 2]} />
-          <meshBasicMaterial
-            color={section.color}
-            transparent
-            opacity={isActive ? 0.5 : 0.2}
-            wireframe
+          <icosahedronGeometry args={[2.5, 4]} />
+          <shaderMaterial
+            vertexShader={vertexShader}
+            fragmentShader={fragmentShader}
+            uniforms={{
+              glowColor: { value: new THREE.Color(section.color) }
+            }}
+            blending={THREE.AdditiveBlending}
+            transparent={true}
+            side={THREE.BackSide}
           />
         </mesh>
 
@@ -478,8 +498,8 @@ function SolarSystemView({ activeSection, planets, onPlanetClick }: { activeSect
           onClick={() => onPlanetClick(planet)}
           isActive={false}
           orbit={{
-            radius: 5 + idx * 2,
-            speed: 0.3 + idx * 0.05,
+            radius: 8 + idx * 3.5, // --- MODIFIED --- Increased base radius and spacing
+            speed: 0.3 - idx * 0.04, // --- MODIFIED --- Outer planets now move slower
             phase: idx * ((Math.PI * 2) / planets.length),
             y: 0
           }}
