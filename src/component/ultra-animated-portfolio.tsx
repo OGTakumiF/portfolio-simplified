@@ -8,7 +8,7 @@ import {
 import * as THREE from 'three';
 import gsap from 'gsap';
 
-// --- ADDED SHADERS ---
+// --- SHADERS ---
 const vertexShader = `
   varying vec3 vNormal;
   void main() {
@@ -21,7 +21,6 @@ const fragmentShader = `
   varying vec3 vNormal;
   uniform vec3 glowColor;
   void main() {
-    // This creates a glowing rim effect (Fresnel)
     float intensity = pow( 0.6 - dot( vNormal, vec3( 0.0, 0.0, 1.0 ) ), 2.0 );
     gl_FragColor = vec4( glowColor, 1.0 ) * intensity * 0.8;
   }
@@ -33,6 +32,7 @@ interface Planet {
   title: string;
   color: string;
   darkColor: string;
+  detail?: string;
 }
 
 interface Section {
@@ -62,12 +62,48 @@ const sections: Section[] = [
       heading: 'Sustainable Infrastructure Engineer',
       description: 'Specialized in Railway Engineering & Power Systems',
       planets: [
-        { id: 'p1', title: 'Bachelor in Sustainable Infrastructure Engineering (Land)', color: '#38bdf8', darkColor: '#0c4a6e' },
-        { id: 'p2', title: 'Diploma in Electrical Engineering (Power)', color: '#38bdf8', darkColor: '#0c4a6e' },
-        { id: 'p3', title: 'Railway systems, track design, and signaling expertise', color: '#38bdf8', darkColor: '#0c4a6e' },
-        { id: 'p4', title: 'Power distribution and control systems', color: '#38bdf8', darkColor: '#0c4a6e' },
-        { id: 'p5', title: 'Sustainable transport solutions', color: '#38bdf8', darkColor: '#0c4a6e' },
-        { id: 'p6', title: 'Expert in infrastructure project management', color: '#38bdf8', darkColor: '#0c4a6e' }
+        { 
+          id: 'p1', 
+          title: 'B.Eng. Sustainable Infrastructure (Land), Honours with Merit', 
+          color: '#38bdf8', 
+          darkColor: '#0c4a6e',
+          detail: "Graduated with Honours with Merit from the Singapore Institute of Technology (SIT).\n\nMy studies in Sustainable Infrastructure Engineering (Land) provided a strong foundation in designing and managing modern infrastructure. I was also an active member of the SIE Student Member Committee and a student member of the IEEE and IES."
+        },
+        { 
+          id: 'p2', 
+          title: 'Diploma in Electrical Engineering (Power Specialisation)', 
+          color: '#38bdf8', 
+          darkColor: '#0c4a6e',
+          detail: "Obtained a Diploma from Ngee Ann Polytechnic with a specialisation in Electrical Power Engineering.\n\nThis equipped me with core technical skills in power distribution, control systems, and electronics."
+        },
+        { 
+          id: 'p3', 
+          title: 'Champion, Singapore RailTech Grand Challenge 2024', 
+          color: '#38bdf8', 
+          darkColor: '#0c4a6e',
+          detail: "Achieved 1st Place (Champion) in the Open Innovation Challenge at the Singapore RailTech Grand Challenge (SGRTGC) 2024.\n\nThis award recognized an innovative solution developed for the rail industry, based on work from the LongRange Safety Tracker project."
+        },
+        { 
+          id: 'p4', 
+          title: 'Designed LoRaWAN Safety Tracker for Railway Tunnels', 
+          color: '#38bdf8', 
+          darkColor: '#0c4a6e',
+          detail: "Designed and prototyped a LoRaWAN tracking and emergency alert system to enhance the safety of maintenance personnel in railway tunnels.\n\nThis project was advised by SBS Transit Rail and was an enhancement based on award-winning solutions for an LTA open innovation competition."
+        },
+        { 
+          id: 'p5', 
+          title: 'Published Academic Papers & Best Presenter Award', 
+          color: '#38bdf8', 
+          darkColor: '#0c4a6e',
+          detail: "Co-authored multiple conference papers on this railway safety technology:\n\n• 'Design and Prototyping of a Real-Time Location Tracking System...' for the 2025 11th International Conference on Control, Automation and Robotics (ICCAR).\n\n• 'A Real-Time LoRaWAN Tracking System in Railway Tunnels...' (In Press).\n\n• Received the Best Presenter Award at the IEEE SOLI 2025 Conference."
+        },
+        { 
+          id: 'p6', 
+          title: 'Project Management Intern at Siemens AG (Rail Comms)', 
+          color: '#38bdf8', 
+          darkColor: '#0c4a6e',
+          detail: "As a Project Management Intern at Siemens AG, I managed the renewal of rail communications systems.\n\nMy responsibilities included coordinating with subcontractors and operators, designing PA system front-ends (SLDs and cable routing), overseeing on-site installation and commissioning, and resolving on-site technical issues."
+        }
       ],
       highlights: ['Railway Systems', 'Power Distribution', 'Infrastructure Design']
     }
@@ -83,12 +119,12 @@ const sections: Section[] = [
       heading: 'Musician & Performer',
       description: 'Trained violinist with vocal capabilities',
       planets: [
-        { id: 'm1', title: 'Classical violin performance and training', color: '#f472b6', darkColor: '#831843' },
-        { id: 'm2', title: 'Vocal training and professional performance', color: '#f472b6', darkColor: '#831843' },
+        { id: 'm1', title: 'Classical violin performance and training', color: '#f472b6', darkColor: '#831843', detail: "Trained in classical violin performance and technique." },
+        { id: 'm2', title: 'Vocal training and professional performance', color: '#f472b6', darkColor: '#831843', detail: "Experienced in vocal training and professional performance settings." },
         { id: 'm3', title: 'Voice-over work for media projects', color: '#f472b6', darkColor: '#831843' },
         { id: 'm4', title: 'Studio recording experience', color: '#f472b6', darkColor: '#831843' },
         { id: 'm5', title: 'Music production and arrangement', color: '#f472b6', darkColor: '#831843' },
-        { id: 'm6', title: 'Performance in orchestral and chamber settings', color: '#f472b6', darkColor: '#831843' }
+        { id: 'm6', title: 'ABRSM Grade 8 Music Theory', color: '#f472b6', darkColor: '#831843', detail: "Certified with a Level 3 Certification in Graded Examination in Music Theory (Grade 8) from ABRSM, demonstrating an advanced understanding of music theory." },
       ],
       highlights: ['Violin', 'Vocals', 'Performance']
     }
@@ -106,10 +142,10 @@ const sections: Section[] = [
       planets: [
         { id: 'ps1', title: 'Regular advisor for friends and family', color: '#fb7185', darkColor: '#7f1d1d' },
         { id: 'ps2', title: 'Community support and mentorship', color: '#fb7185', darkColor: '#7f1d1d' },
-        { id: 'ps3', title: 'Deep understanding of human behavior', color: '#fb7185', darkColor: '#7f1d1d' },
-        { id: 'ps4', title: 'Empathetic problem-solving approach', color: '#fb7185', darkColor: '#7f1d1d' },
-        { id: 'ps5', title: 'Personal and professional development focus', color: '#fb7185', darkColor: '#7f1d1d' },
-        { id: 'ps6', title: 'Conflict resolution and mediation', color: '#fb7185', darkColor: '#7f1d1d' }
+        { id: 'ps3', title: 'Empathetic problem-solving approach', color: '#fb7185', darkColor: '#7f1d1d' },
+        { id: 'ps4', title: 'Personal and professional development focus', color: '#fb7185', darkColor: '#7f1d1d' },
+        { id: 'ps5', title: 'Conflict resolution and mediation', color: '#fb7185', darkColor: '#7f1d1d' },
+        { id: 'ps6', title: 'Certified in Psychology of Learning', color: '#fb7185', darkColor: '#7f1d1d', detail: "Completed a certification in 'Psicologia dell'apprendimento' (Psychology of Learning) from FedericaX, reflecting a personal interest in human behavior and development." },
       ],
       highlights: ['Mentorship', 'Counseling', 'Development']
     }
@@ -125,12 +161,12 @@ const sections: Section[] = [
       heading: 'Motorsports Enthusiast',
       description: 'Speed, precision, and engineering excellence',
       planets: [
-        { id: 'mo1', title: 'Deep interest in vehicle dynamics and performance', color: '#fcd34d', darkColor: '#78350f' },
+        { id: 'mo1', title: 'Deep interest in vehicle dynamics', color: '#fcd34d', darkColor: '#78350f' },
         { id: 'mo2', title: 'Racing strategy and competitive analytics', color: '#fcd34d', darkColor: '#78350f' },
         { id: 'mo3', title: 'High-performance engineering principles', color: '#fcd34d', darkColor: '#78350f' },
         { id: 'mo4', title: 'Motorsports technology and innovations', color: '#fcd34d', darkColor: '#78350f' },
-        { id: 'mo5', title: 'Track day experience and driver training', color: '#fcd34d', darkColor: '#78350f' },
-        { id: 'mo6', title: 'Passion for precision and speed', color: '#fcd34d', darkColor: '#78350f' }
+        { id: 'mo5', title: 'Passion for precision and speed', color: '#fcd34d', darkColor: '#78350f' },
+        { id: 'mo6', title: 'Class 3 Drivers License', color: '#fcd34d', darkColor: '#78350f', detail: "Holding a Class 3 Drivers License since 2020." },
       ],
       highlights: ['Performance', 'Dynamics', 'Racing']
     }
@@ -146,11 +182,11 @@ const sections: Section[] = [
       heading: 'Archery Practice',
       description: 'Focus, discipline, and precision mastery',
       planets: [
-        { id: 'a1', title: 'Regular competitive archery practice', color: '#4ade80', darkColor: '#064e3b' },
-        { id: 'a2', title: 'Mental discipline and focus training', color: '#4ade80', darkColor: '#064e3b' },
-        { id: 'a3', title: 'Precision accuracy development', color: '#4ade80', darkColor: '#064e3b' },
-        { id: 'a4', title: 'Tournament participation and ranking', color: '#4ade80', darkColor: '#064e3b' },
-        { id: 'a5', title: 'Translates engineering mindset to athletics', color: '#4ade80', darkColor: '#064e3b' },
+        { id: 'a1', title: 'Varsity Archer (SIT & NP)', color: '#4ade80', darkColor: '#064e3b', detail: "Competed as a member of the varsity archery teams at both Singapore Institute of Technology (SIT) and Ngee Ann Polytechnic." },
+        { id: 'a2', title: 'Half-Colours Award (Ngee Ann Polytechnic)', color: '#4ade80', darkColor: '#064e3b', detail: "Received the Half-Colours Award from Ngee Ann Polytechnic, recognizing achievements and contributions to the varsity archery team." },
+        { id: 'a3', title: 'Discipline & Focus', color: '#4ade80', darkColor: '#064e3b', detail: "Archery practice hones mental discipline, focus, and a philosophy of continuous improvement, which I apply to engineering and technical challenges." },
+        { id: 'a4', title: 'Mental discipline and focus training', color: '#4ade80', darkColor: '#064e3b' },
+        { id: 'a5', title: 'Precision accuracy development', color: '#4ade80', darkColor: '#064e3b' },
         { id: 'a6', title: 'Continuous improvement philosophy', color: '#4ade80', darkColor: '#064e3b' }
       ],
       highlights: ['Precision', 'Focus', 'Discipline']
@@ -167,11 +203,14 @@ const sections: Section[] = [
       heading: 'Multi-Disciplinary Excellence',
       description: 'Combining technical expertise with creative passion',
       planets: [
-        { id: 'ac1', title: 'Dual engineering qualifications recognized internationally', color: '#fde047', darkColor: '#713f12' },
-        { id: 'ac2', title: 'Active community involvement and leadership', color: '#fde047', darkColor: '#713f12' },
-        { id: 'ac3', title: 'Award-winning musician with regional recognition', color: '#fde047', darkColor: '#713f12' },
-        { id: 'ac4', title: 'Technical leadership in multiple fields', color: '#fde047', darkColor: '#713f12' },
-        { id: 'ac5', title: 'Continuous learner and innovator', color: '#fde047', darkColor: '#713f12' },
+        { id: 'ac1', title: 'Lean Six Sigma (Green Belt)', color: '#fde047', darkColor: '#713f12', detail: "Certified Lean Six Sigma Green Belt, demonstrating skills in process improvement, statistical analysis, and quality management." },
+        { id: 'ac2', title: 'Professional Certifications', color: '#fde047', darkColor: '#713f12', detail: "Holds multiple professional certifications including:\n\n• 'Mastering systems thinking in practice' (The Open University)\n• 'SAP Enterprise Services (Materials Management)'\n• 'Apply Workplace Safety and Health in Construction Sites'" },
+        { id: 'ac3', title: 'SAF Ammunition Reliability SO (NS)', color: '#fde047', darkColor: '#713f12', detail: "During National Service, served as an Ammunition Reliability SO. Centralised disparate data into a master repository, enabling the creation of the annual Tri-Service Ammunition Surveillance Work Plan. Also conducted root cause analysis on ammunition incident reports." },
+        { id: 'ac4', title: 'SAFAC Digital-In-Charge (NS)', color: '#fde047', darkColor: '#713f12', detail: "Also served as the Digital-In-Charge for SAF Ammunition Command. Directed all content for SAFAC Firepower TV to enhance safety and security awareness. Managed media production and live event coverage for key events like Change of Command and SAF Day." },
+        { id: 'ac5', title: 'Installation Engineer Intern (ST Eng.)', color: '#fde047', darkColor: '#713f12', detail: "As an intern, I supervised on-site installation of
+Platform Screen Door (PSD) systems, ensuring WSH compliance. I also
+prepared reports, assisted the PM with schedules, and participated in
+fault findings and technical investigations." },
         { id: 'ac6', title: 'Bridging engineering, arts, and personal development', color: '#fde047', darkColor: '#713f12' }
       ],
       highlights: ['Excellence', 'Leadership', 'Innovation']
@@ -283,7 +322,7 @@ function AnimatedOrbital({ section, onClick, isActive, orbit }: {
       pointLightRef.current.distance = isActive ? 25 : 20;
     }
 
-    if (trailRef.current) {
+L    if (trailRef.current) {
       trailRef.current.rotation.x += 0.005;
       trailRef.current.rotation.y += 0.01;
     }
@@ -292,7 +331,7 @@ function AnimatedOrbital({ section, onClick, isActive, orbit }: {
   return (
     <Float speed={2} rotationIntensity={0.5} floatIntensity={1}>
       <group ref={groupRef} position={section.position}>
-        {/* Flat, tilted ring --- MODIFIED --- */}
+        {/* Flat, tilted ring */}
         <mesh ref={ringRef} rotation-x={Math.PI * 0.4}>
           <ringGeometry args={[3.2, 3.8, 64]} />
           <meshBasicMaterial
@@ -340,7 +379,7 @@ function AnimatedOrbital({ section, onClick, isActive, orbit }: {
           </mesh>
         </Trail>
 
-        {/* Glowing Atmosphere --- MODIFIED --- */}
+        {/* Glowing Atmosphere */}
         <mesh ref={glowRef}>
           <icosahedronGeometry args={[2.5, 4]} />
           <shaderMaterial
@@ -498,8 +537,8 @@ function SolarSystemView({ activeSection, planets, onPlanetClick }: { activeSect
           onClick={() => onPlanetClick(planet)}
           isActive={false}
           orbit={{
-            radius: 8 + idx * 3.5, // --- MODIFIED --- Increased base radius and spacing
-            speed: 0.3 - idx * 0.04, // --- MODIFIED --- Outer planets now move slower
+            radius: 8 + idx * 3.5, // Spaced out orbits
+            speed: 0.3 - idx * 0.04, // Outer planets are slower
             phase: idx * ((Math.PI * 2) / planets.length),
             y: 0
           }}
@@ -512,15 +551,15 @@ function SolarSystemView({ activeSection, planets, onPlanetClick }: { activeSect
 function Scene3D({
   activeSection,
   onSectionClick,
-  view, // Add view prop
-  planets, // Add planets prop
-  onPlanetClick // Add onPlanetClick prop
+  view,
+  planets,
+  onPlanetClick
 }: {
   activeSection: Section | null;
   onSectionClick: (section: Section, currentPos: THREE.Vector3) => void;
-  view: 'galaxy' | 'solarSystem'; // Define view type
-  planets: Planet[]; // Define planets type
-  onPlanetClick: (planet: Planet) => void; // Define onPlanetClick type
+  view: 'galaxy' | 'solarSystem';
+  planets: Planet[];
+  onPlanetClick: (planet: Planet) => void;
 }) {
   return (
     <>
@@ -685,7 +724,7 @@ export default function AnimatedPortfolio() {
         </div>
       )}
 
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40">
+      <div className="absolute bottom-8 left-1/2 -translate-x-12 z-40">
         <div className="text-center space-y-3">
           <p className="text-white/70 text-sm bg-slate-900/80 backdrop-blur-md px-6 py-3 rounded-full border border-slate-700/50 font-medium">
             🌌 Milky Way at center • Planets are sections • Click to explore
@@ -744,9 +783,14 @@ export default function AnimatedPortfolio() {
             >
               <X className="w-6 h-6" />
             </button>
-            <div className="relative z-10 text-center">
-              <h2 className="text-3xl font-black text-white mb-4">{activePlanet.title}</h2>
-              <p className="text-lg text-slate-300">Detailed information about this achievement or skill would be displayed here.</p>
+            <div className="relative z-10 text-left">
+              <h2 className="text-3xl font-black text-white mb-6 text-center">{activePlanet.title}</h2>
+              {/* Added whitespace-pre-line to respect newlines (\n) in the detail string */}
+              {activePlanet.detail ? (
+                <p className="text-lg text-slate-300 whitespace-pre-line">{activePlanet.detail}</p>
+              ) : (
+                <p className="text-lg text-slate-300 text-center">Detailed information about this achievement or skill would be displayed here.</p>
+              )}
             </div>
           </div>
         </div>
