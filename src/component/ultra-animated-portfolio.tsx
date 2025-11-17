@@ -205,12 +205,9 @@ const sections: Section[] = [
       planets: [
         { id: 'ac1', title: 'Lean Six Sigma (Green Belt)', color: '#fde047', darkColor: '#713f12', detail: "Certified Lean Six Sigma Green Belt, demonstrating skills in process improvement, statistical analysis, and quality management." },
         { id: 'ac2', title: 'Professional Certifications', color: '#fde047', darkColor: '#713f12', detail: "Holds multiple professional certifications including:\n\n• 'Mastering systems thinking in practice' (The Open University)\n• 'SAP Enterprise Services (Materials Management)'\n• 'Apply Workplace Safety and Health in Construction Sites'" },
-        { id: 'ac3', title: 'SAF Ammunition Reliability SO (NS)', color: '#fde047', darkColor: '#713f12', detail: "During National Service, served as an Ammunition Reliability SO. Centralised disparate data into a master repository, enabling the creation of the annual Tri-Service Ammunition Surveillance Work Plan. Also conducted root cause analysis on ammunition incident reports." },
+        { id: 'ac3', title: 'SAF Ammunition Reliability SO (NS)', color: '#fde047', darkColor: '#713f1logo.svg'le', detail: "During National Service, served as an Ammunition Reliability SO. Centralised disparate data into a master repository, enabling the creation of the annual Tri-Service Ammunition Surveillance Work Plan. Also conducted root cause analysis on ammunition incident reports." },
         { id: 'ac4', title: 'SAFAC Digital-In-Charge (NS)', color: '#fde047', darkColor: '#713f12', detail: "Also served as the Digital-In-Charge for SAF Ammunition Command. Directed all content for SAFAC Firepower TV to enhance safety and security awareness. Managed media production and live event coverage for key events like Change of Command and SAF Day." },
-        { id: 'ac5', title: 'Installation Engineer Intern (ST Eng.)', color: '#fde047', darkColor: '#713f12', detail: "As an intern, I supervised on-site installation of
-Platform Screen Door (PSD) systems, ensuring WSH compliance. I also
-prepared reports, assisted the PM with schedules, and participated in
-fault findings and technical investigations." },
+        { id: 'ac5', title: 'Installation Engineer Intern (ST Eng.)', color: '#fde047', darkColor: '#713f12', detail: "As an intern, I supervised on-site installation of\nPlatform Screen Door (PSD) systems, ensuring WSH compliance. I also\nprepared reports, assisted the PM with schedules, and participated in\nfault findings and technical investigations." },
         { id: 'ac6', title: 'Bridging engineering, arts, and personal development', color: '#fde047', darkColor: '#713f12' }
       ],
       highlights: ['Excellence', 'Leadership', 'Innovation']
@@ -322,10 +319,12 @@ function AnimatedOrbital({ section, onClick, isActive, orbit }: {
       pointLightRef.current.distance = isActive ? 25 : 20;
     }
 
-L    if (trailRef.current) {
+    // --- THIS IS THE CORRECTED BLOCK ---
+    if (trailRef.current) {
       trailRef.current.rotation.x += 0.005;
       trailRef.current.rotation.y += 0.01;
     }
+    // --- END OF FIX ---
   });
 
   return (
@@ -639,7 +638,7 @@ export default function AnimatedPortfolio() {
     }
   };
 
-  const handlePlanetClick = (planet: Planet) => {
+  const handlePlanetClick = (planet: Planet).tsx => {
     setActivePlanet(planet);
   };
 
@@ -724,7 +723,7 @@ export default function AnimatedPortfolio() {
         </div>
       )}
 
-      <div className="absolute bottom-8 left-1/2 -translate-x-12 z-40">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40">
         <div className="text-center space-y-3">
           <p className="text-white/70 text-sm bg-slate-900/80 backdrop-blur-md px-6 py-3 rounded-full border border-slate-700/50 font-medium">
             🌌 Milky Way at center • Planets are sections • Click to explore
