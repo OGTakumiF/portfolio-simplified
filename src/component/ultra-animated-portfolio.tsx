@@ -470,9 +470,10 @@ function GalaxyCenter({ section }: { section?: Section }) {
     }
   });
 
-  const title = section ? section.title : 'Milky Way';
-  const color = section ? section.color : '#3b82f6';
-  const emissive = section ? section.color : '#60a5fa';
+  // --- MODIFIED: Use Name as title, Sun colors as default ---
+  const title = section ? section.title : 'Sean Ogta Goh';
+  const color = section ? section.color : '#fbbf24'; // Sun yellow
+  const emissive = section ? section.color : '#d97706'; // Orange-gold
 
   return (
     <group position={[0, 1.5, 0]}>
@@ -480,7 +481,7 @@ function GalaxyCenter({ section }: { section?: Section }) {
         <meshStandardMaterial
           color={color}
           emissive={emissive}
-          emissiveIntensity={0.8}
+          emissiveIntensity={2} // --- INCREASED GLOW ---
           metalness={0.6}
           roughness={0.3}
           transparent
@@ -665,7 +666,7 @@ export default function AnimatedPortfolio() {
             className="text-white hover:text-cyan-400 transition-all duration-300 font-black text-xl tracking-tight flex items-center space-x-2 group"
           >
             <SparklesIcon className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-            <span>Sean Ogta Goh</span>
+            <span>Home</span> {/* --- MODIFIED: Changed from name to "Home" --- */}
           </button>
 
           {view === 'solarSystem' && (
