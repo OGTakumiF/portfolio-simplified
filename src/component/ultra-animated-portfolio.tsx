@@ -1,19 +1,89 @@
-import { Suspense, useRef, useState } from 'react';
+import { Suspense, useRef, useState, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Text, Float, MeshReflectorMaterial, Cylinder, Box, Sphere, OrbitControls, RoundedBox, Loader } from '@react-three/drei';
+import { 
+  Text, Float, MeshReflectorMaterial, Cylinder, Box, Sphere, 
+  OrbitControls, RoundedBox, CubicBezierLine, Instance, Instances 
+} from '@react-three/drei';
 import * as THREE from 'three';
 
 // --- DATA ---
 const sections = [
-  { id: 'engineering', title: 'Engineering', color: '#06b6d4', description: "Infrastructure & Rail Systems" },
-  { id: 'music', title: 'Music', color: '#ec4899', description: "Violin, Vocals & Production" },
-  { id: 'psychology', title: 'Psychology', color: '#f87171', description: "Mentorship & Human Behavior" },
-  { id: 'motorsports', title: 'Motorsports', color: '#fbbf24', description: "Vehicle Dynamics & Racing" },
-  { id: 'archery', title: 'Archery', color: '#34d399', description: "Focus & Discipline" },
-  { id: 'achievements', title: 'Awards', color: '#a78bfa', description: "Honours & Certifications" },
+  { id: 'engineering', title: 'ENGINEERING', color: '#22d3ee', description: "Rail & Infra" }, // Cyan
+  { id: 'music', title: 'MUSIC', color: '#f472b6', description: "Violin & Vocals" }, // Pink
+  { id: 'psychology', title: 'PSYCHOLOGY', color: '#f87171', description: "Mentorship" }, // Red
+  { id: 'motorsports', title: 'MOTORSPORTS', color: '#fbbf24', description: "Dynamics" }, // Amber
+  { id: 'archery', title: 'ARCHERY', color: '#34d399', description: "Discipline" }, // Emerald
+  { id: 'achievements', title: 'AWARDS', color: '#a78bfa', description: "Excellence" }, // Purple
 ];
 
-// --- COMPONENTS ---
+// --- HELPER COMPONENTS ---
+
+// 1. Cables/Wires Draping
+function Cable({ start, end, v1, v2, color = '#111' }: { start: [number, number, number], end: [number, number, number], v1: [number, number, number], v2: [number, number, number], color?: string }) {
+  return (
+    <CubicBezierLine
+      start={start}
+      end={end}
+      midA={v1}
+      midB={v2}
+      color={color}
+      lineWidth={2}
+    />
+  );
+}
+
+// 2. Rising Steam Particles
+function Steam() {
+  const steamRef = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    if (steamRef.current) {
+      steamRef.current.children.forEach((child, i) => {
+        const mesh = child as THREE.Mesh;
+        // Move up
+        mesh.position.y += 0.005 + (i * 0.0005);
+        // Wiggle
+        mesh.position.x += Math.sin(state.clock.elapsedTime * 2 + i) * 0.002;
+        // Reset if too high
+        if (mesh.position.y > 1.5) {
+          mesh.position.y = 0;
+          mesh.material.opacity = 0.6;
+        } else {
+          // Fade out as it goes up
+          (mesh.material as THREE.MeshBasicMaterial).opacity -= 0.002;
+        }
+      });
+    }
+  });
+
+  return (
+    <group ref={steamRef} position={[0, 0.8, 0]}>
+      {[...Array(5)].map((_, i) => (
+        <mesh key={i} position={[(Math.random() - 0.5) * 0.5, Math.random(), (Math.random() - 0.5) * 0.5]}>
+          <sphereGeometry args={[0.08, 8, 8]} />
+          <meshBasicMaterial color="#fff" transparent opacity={0.4} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// 3. Fake Glow Sprite (Billboard)
+function Glow({ color, scale = 1 }: { color: string, scale?: number }) {
+  return (
+    <mesh position={[0, 0, -0.1]}>
+      <planeGeometry args={[scale, scale]} />
+      <meshBasicMaterial 
+        color={color} 
+        transparent 
+        opacity={0.3} 
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
+
+// --- SCENE OBJECTS ---
 
 // 1. The Reflective Floor
 function NeonFloor() {
@@ -24,60 +94,59 @@ function NeonFloor() {
         blur={[300, 100]}
         resolution={1024}
         mixBlur={1}
-        mixStrength={60}
-        roughness={0.5}
+        mixStrength={80}
+        roughness={0.4} // Smoother for more reflection
         depthScale={1.2}
         minDepthThreshold={0.4}
         maxDepthThreshold={1.4}
-        color="#151520"
+        color="#080808" // Pitch black floor base
         metalness={0.8}
-        mirror={0.7}
+        mirror={0.75}
       />
     </mesh>
   );
 }
 
-// 2. The Navigation Signpost
+// 2. The Navigation Signpost (Upgraded)
 function SignPost({ activeId, onSectionSelect }: { activeId: string | null, onSectionSelect: (id: string, pos: THREE.Vector3) => void }) {
   const groupRef = useRef<THREE.Group>(null);
 
   return (
-    <group ref={groupRef} position={[-6, 0, 2]} rotation={[0, 0.3, 0]}>
-      {/* The Pole */}
-      <Cylinder args={[0.15, 0.25, 12, 16]} position={[0, 6, 0]}>
-        <meshStandardMaterial color="#2d2d3a" roughness={0.4} />
+    <group ref={groupRef} position={[-5, 0, 1]} rotation={[0, 0.4, 0]}>
+      {/* Main Pole */}
+      <Cylinder args={[0.12, 0.12, 10, 8]} position={[0, 5, 0]}>
+        <meshStandardMaterial color="#1f1f23" roughness={0.8} />
       </Cylinder>
+      
       {/* Concrete Base */}
-      <Box args={[1.5, 0.5, 1.5]} position={[0, 0.25, 0]}>
-        <meshStandardMaterial color="#1f1f23" />
+      <Box args={[1, 0.6, 1]} position={[0, 0.3, 0]}>
+        <meshStandardMaterial color="#333" />
       </Box>
 
-      {/* Street Lamps on the Pole */}
-      <group position={[0, 9, 0]}>
-        <Box args={[3, 0.1, 0.1]} position={[0, 0, 0]}>
-          <meshStandardMaterial color="#333" />
+      {/* Top Light Fixture */}
+      <group position={[0, 9.8, 0]}>
+        <Box args={[0.4, 0.5, 0.4]}>
+           <meshStandardMaterial color="#111" />
         </Box>
-        <pointLight position={[-1.4, -0.5, 0]} distance={8} intensity={3} color="#d946ef" />
-        <Sphere args={[0.4]} position={[-1.4, -0.5, 0]}>
-          <meshStandardMaterial emissive="#d946ef" emissiveIntensity={2} color="#000" />
-        </Sphere>
-        <pointLight position={[1.4, -0.5, 0]} distance={8} intensity={3} color="#06b6d4" />
-        <Sphere args={[0.4]} position={[1.4, -0.5, 0]}>
-          <meshStandardMaterial emissive="#06b6d4" emissiveIntensity={2} color="#000" />
+        <pointLight intensity={2} color="#fff" distance={5} />
+        <Sphere args={[0.2]} position={[0, -0.2, 0]}>
+           <meshBasicMaterial color="#fff" />
         </Sphere>
       </group>
 
       {/* The Signs */}
       {sections.map((section, idx) => {
         const isLeft = idx % 2 === 0;
-        const yPos = 7.5 - idx * 1.1;
-        const xOffset = isLeft ? -0.8 : 0.8;
-        const rotY = isLeft ? -0.1 : 0.1;
+        const yPos = 8.5 - idx * 1.2;
+        const xOffset = isLeft ? -0.1 : 0.1;
+        const rotY = isLeft ? -0.2 : 0.2;
+        const isActive = activeId === section.id;
 
         return (
           <group 
             key={section.id} 
-            position={[0, yPos, 0]} 
+            position={[xOffset, yPos, 0]} 
+            rotation={[0, rotY, 0]}
             onClick={(e) => {
               e.stopPropagation();
               const worldPos = new THREE.Vector3(0, yPos, 0).applyMatrix4(groupRef.current!.matrixWorld);
@@ -86,32 +155,42 @@ function SignPost({ activeId, onSectionSelect }: { activeId: string | null, onSe
             onPointerOver={() => document.body.style.cursor = 'pointer'}
             onPointerOut={() => document.body.style.cursor = 'auto'}
           >
-            <Float speed={2} rotationIntensity={0.1} floatIntensity={0.2}>
-              <group position={[xOffset * 1.2, 0, 0]} rotation={[0, rotY, 0]}>
-                <RoundedBox args={[2.8, 0.8, 0.1]} radius={0.05} smoothness={4}>
-                  <meshStandardMaterial 
-                    color="#1a1a2e" 
-                    emissive={activeId === section.id ? section.color : '#000'}
-                    emissiveIntensity={activeId === section.id ? 0.5 : 0}
-                  />
-                </RoundedBox>
-                <Box args={[2.9, 0.9, 0.05]} position={[0, 0, -0.04]}>
-                   <meshBasicMaterial color={section.color} />
-                </Box>
+            <group position={[isLeft ? -1.6 : 1.6, 0, 0]}>
+              {/* Connector Arm */}
+              <Box args={[1.2, 0.1, 0.1]} position={[isLeft ? 0.6 : -0.6, 0, 0]}>
+                <meshStandardMaterial color="#222" />
+              </Box>
 
-                {/* Text - Removed custom font to prevent loading errors */}
-                <Text
-                  position={[0, 0, 0.06]}
-                  fontSize={0.35}
-                  color={activeId === section.id ? "#fff" : section.color}
-                  anchorX="center"
-                  anchorY="middle"
-                  fontWeight="bold"
-                >
-                  {section.title.toUpperCase()}
-                </Text>
-              </group>
-            </Float>
+              {/* The Sign Box */}
+              <RoundedBox args={[2.2, 0.7, 0.15]} radius={0.05} smoothness={4}>
+                <meshStandardMaterial 
+                  color="#000"
+                  emissive={section.color}
+                  emissiveIntensity={isActive ? 0.4 : 0.1}
+                  roughness={0.2}
+                />
+              </RoundedBox>
+
+              {/* Glowing Border */}
+              <Box args={[2.25, 0.75, 0.14]}>
+                 <meshBasicMaterial color={isActive ? "#fff" : section.color} wireframe />
+              </Box>
+
+              {/* Text */}
+              <Text
+                position={[0, 0, 0.09]}
+                fontSize={0.28}
+                color={isActive ? "#fff" : section.color}
+                anchorX="center"
+                anchorY="middle"
+                fontWeight="900"
+                letterSpacing={0.05}
+              >
+                {section.title}
+                {/* Text Glow */}
+                {isActive && <meshBasicMaterial color="#fff" toneMapped={false} />}
+              </Text>
+            </group>
           </group>
         );
       })}
@@ -119,103 +198,196 @@ function SignPost({ activeId, onSectionSelect }: { activeId: string | null, onSe
   );
 }
 
-// 3. The Ramen Shop
+// 3. The Detailed Ramen Shop
 function RamenStall() {
   return (
-    <group position={[2, 0, -2]} rotation={[0, -0.4, 0]}>
-      {/* Main Structure */}
-      <Box args={[6, 5, 4]} position={[0, 2.5, 0]}>
+    <group position={[2.5, 0, -2]} rotation={[0, -0.5, 0]}>
+      {/* --- STRUCTURE --- */}
+      {/* Base Platform */}
+      <Box args={[7, 0.5, 5]} position={[0, 0.25, 0]}>
+        <meshStandardMaterial color="#1a1a1a" />
+      </Box>
+      {/* Main Container */}
+      <Box args={[6, 4.5, 3.5]} position={[0, 2.5, -0.5]}>
         <meshStandardMaterial color="#2d2d3a" />
       </Box>
       
-      {/* The Roof */}
-      <Box args={[6.2, 0.2, 5]} position={[0, 5.1, 0.5]} rotation={[0.1, 0, 0]}>
-        <meshStandardMaterial color="#1a1a2e" />
-      </Box>
-      <Box args={[6, 1.5, 3]} position={[0, 6, 0.5]}>
-         <meshStandardMaterial color="#111" />
-      </Box>
+      {/* --- ROOF DETAIL --- */}
+      {/* Awning */}
+      <group position={[0, 4.2, 1.8]} rotation={[0.2, 0, 0]}>
+        <Box args={[6.2, 0.2, 2]}>
+          <meshStandardMaterial color="#111" />
+        </Box>
+        {/* Awning Stripes */}
+        <Box args={[6.25, 0.21, 0.1]} position={[0, 0, 1]}>
+           <meshBasicMaterial color="#d946ef" /> {/* Pink Stripe */}
+        </Box>
+      </group>
 
-      {/* Neon Sign */}
-      <group position={[0, 6, 2.1]}>
+      {/* AC Unit / Vents on Roof */}
+      <group position={[1.5, 5, -0.5]}>
+         <Box args={[1.5, 1, 1.5]}>
+            <meshStandardMaterial color="#444" />
+         </Box>
+         <Cylinder args={[0.4, 0.4, 0.2, 16]} rotation={[0, 0, Math.PI/2]} position={[0.8, 0, 0]}>
+            <meshStandardMaterial color="#222" />
+         </Cylinder>
+      </group>
+
+      {/* --- SIGNAGE --- */}
+      {/* Main Sign Board */}
+      <group position={[0, 5.5, 1]}>
+        <Box args={[5, 1.2, 0.2]}>
+           <meshStandardMaterial color="#000" />
+        </Box>
+        {/* Neon Tube Border */}
+        <Box args={[5.1, 1.3, 0.15]}>
+           <meshBasicMaterial color="#d946ef" />
+        </Box>
         <Text
-          fontSize={0.8}
+          position={[0, 0, 0.12]}
+          fontSize={0.6}
           color="#ff00ff"
           anchorX="center"
           anchorY="middle"
-          outlineWidth={0.02}
-          outlineColor="#fff"
           fontWeight="bold"
         >
           SEAN'S RAMEN
           <meshBasicMaterial color="#ff00ff" toneMapped={false} />
         </Text>
-        <pointLight position={[0, 0, 1]} intensity={2} color="#ff00ff" distance={5} />
+        {/* Backlight for Sign */}
+        <pointLight intensity={3} color="#ff00ff" distance={6} decay={2} />
       </group>
 
-      {/* The Counter */}
-      <Box args={[5.5, 1.2, 1]} position={[0, 0.6, 2.2]}>
-        <meshStandardMaterial color="#5c3a21" />
+      {/* --- INTERIOR/FRONT --- */}
+      {/* Counter */}
+      <Box args={[5.8, 1.1, 0.8]} position={[0, 0.8, 1.5]}>
+        <meshStandardMaterial color="#5c3a21" /> {/* Dark Wood */}
+      </Box>
+      {/* Counter Top */}
+      <Box args={[6, 0.1, 1]} position={[0, 1.4, 1.5]}>
+        <meshStandardMaterial color="#8b5a2b" /> {/* Light Wood */}
       </Box>
 
-      {/* Hanging Lanterns */}
-      <group position={[0, 4.5, 2.5]}>
-         <Float speed={3} rotationIntensity={0.2} floatIntensity={0.2}>
-            {[-2, 0, 2].map((x, i) => (
-              <Sphere key={i} args={[0.3]} position={[x, i === 1 ? -0.2 : 0, 0]}>
-                 <meshStandardMaterial emissive="#fbbf24" emissiveIntensity={3} color="orange" />
-                 <pointLight intensity={1} color="#fbbf24" distance={3} />
-              </Sphere>
-            ))}
-         </Float>
+      {/* Noren (Curtains) */}
+      <group position={[0, 3.8, 1.3]}>
+         {[-2, -1, 0, 1, 2].map((x, i) => (
+            <mesh key={i} position={[x, -0.4, 0]}>
+               <planeGeometry args={[0.9, 0.8]} />
+               <meshStandardMaterial color="#1a1a2e" side={THREE.DoubleSide} />
+               <Text position={[0, 0, 0.01]} fontSize={0.4} color="#fff">
+                  {['ラ', 'ー', 'メ', 'ン', '店'][i]}
+               </Text>
+            </mesh>
+         ))}
+      </group>
+
+      {/* Lanterns */}
+      <group position={[0, 3, 2]}>
+         {[-2.2, 2.2].map((x, i) => (
+            <group key={i} position={[x, 0, 0]}>
+               {/* Lantern Body */}
+               <Cylinder args={[0.3, 0.3, 0.8, 8]}>
+                  <meshStandardMaterial emissive="#fbbf24" emissiveIntensity={2} color="#fbbf24" />
+               </Cylinder>
+               <pointLight intensity={2} color="orange" distance={4} />
+            </group>
+         ))}
+      </group>
+
+      {/* --- DETAILS --- */}
+      {/* Bowls on Counter */}
+      <group position={[0, 1.5, 1.5]}>
+         <group position={[-1, 0, 0]}>
+            <Cylinder args={[0.2, 0.15, 0.2]}><meshStandardMaterial color="#111" /></Cylinder>
+            <Steam />
+         </group>
+         <group position={[1, 0, 0]}>
+            <Cylinder args={[0.2, 0.15, 0.2]}><meshStandardMaterial color="#111" /></Cylinder>
+            <Steam />
+         </group>
       </group>
 
       {/* Stools */}
-      <group position={[0, 0.5, 3.2]}>
+      <group position={[0, 0.5, 2.5]}>
         {[-1.5, 0, 1.5].map((x, i) => (
-          <Cylinder key={i} args={[0.3, 0.3, 1, 16]} position={[x, 0, 0]}>
-            <meshStandardMaterial color="#3f3f46" />
-          </Cylinder>
+          <group key={i} position={[x, 0, 0]}>
+             <Cylinder args={[0.3, 0.3, 0.1, 16]} position={[0, 0.5, 0]}>
+                <meshStandardMaterial color="#8b0000" /> {/* Red cushion */}
+             </Cylinder>
+             <Cylinder args={[0.05, 0.05, 1]} position={[0, 0, 0]}>
+                <meshStandardMaterial color="#111" />
+             </Cylinder>
+             <Cylinder args={[0.25, 0.25, 0.05]} position={[0, -0.5, 0]}>
+                <meshStandardMaterial color="#111" />
+             </Cylinder>
+          </group>
         ))}
       </group>
 
-      {/* Holographic Menu */}
-      <Float speed={2} rotationIntensity={0.1} floatIntensity={0.2}>
-        <group position={[3.5, 2, 2]} rotation={[0, -0.5, 0]}>
-           <Box args={[2, 3, 0.1]}>
-              <meshBasicMaterial color="#000" opacity={0.8} transparent />
-           </Box>
-           <Box args={[2.05, 3.05, 0.05]}>
-              <meshBasicMaterial color="#06b6d4" />
-           </Box>
-           <Text position={[0, 1, 0.1]} fontSize={0.3} color="#06b6d4" fontWeight="bold">
-             MENU
-           </Text>
-           <Text position={[0, 0, 0.1]} fontSize={0.15} color="white" maxWidth={1.8} textAlign="center">
-             Click signs on left to explore...
-           </Text>
-        </group>
-      </Float>
+      {/* Menu Board */}
+      <group position={[3.2, 1.5, 1.5]} rotation={[0, -0.2, 0]}>
+         <Box args={[0.1, 2, 1.2]}>
+            <meshStandardMaterial color="#000" />
+         </Box>
+         {/* Glowing Menu Face */}
+         <mesh position={[-0.06, 0, 0]} rotation={[0, -Math.PI/2, 0]}>
+            <planeGeometry args={[1, 1.8]} />
+            <meshBasicMaterial color="#06b6d4" transparent opacity={0.2} side={THREE.DoubleSide} />
+         </mesh>
+         <Text 
+            position={[-0.07, 0.6, 0]} 
+            rotation={[0, -Math.PI/2, 0]}
+            fontSize={0.2} 
+            color="#06b6d4"
+         >
+            MENU
+         </Text>
+         <Text 
+            position={[-0.07, 0, 0]} 
+            rotation={[0, -Math.PI/2, 0]}
+            fontSize={0.1} 
+            color="#fff"
+            maxWidth={0.9}
+            textAlign="center"
+            lineHeight={1.5}
+         >
+            {"Ramen.....$12\nGyoza.....$6\nSake......$8"}
+         </Text>
+      </group>
     </group>
   );
 }
 
-// 4. Camera Controller
+// 4. Wires Connecting Scene
+function Wires() {
+  return (
+    <group>
+       {/* From SignPost to Shop Roof */}
+       <Cable start={[-5, 9, 1]} end={[2.5, 5.5, -2.5]} v1={[-2, 7, 0]} v2={[0, 6, -1]} />
+       <Cable start={[-5, 8.5, 1]} end={[2.5, 5.5, -1.5]} v1={[-2, 6, 0]} v2={[0, 5, 0]} />
+       
+       {/* Hanging loose wire on shop */}
+       <Cable start={[0, 6, -2]} end={[5, 6, -2]} v1={[1, 4, -2]} v2={[4, 5, -2]} color="#222" />
+    </group>
+  );
+}
+
+// 5. Camera Controller
 function CameraRig({ targetPosition }: { targetPosition: THREE.Vector3 | null }) {
   const { camera, controls } = useThree<any>();
   
   useFrame((state, delta) => {
-    // Smoothly interpolate camera position
-    const defaultPos = new THREE.Vector3(0, 4, 14); 
-    const focusPos = targetPosition ? new THREE.Vector3(targetPosition.x, targetPosition.y, targetPosition.z + 8) : defaultPos;
+    // Default wide view
+    const defaultPos = new THREE.Vector3(0, 3, 14); 
+    const focusPos = targetPosition ? new THREE.Vector3(targetPosition.x - 2, targetPosition.y + 1, 8) : defaultPos;
     
     state.camera.position.lerp(focusPos, 2 * delta);
     
-    // Smooth lookAt target
+    // Look target
     const defaultTarget = new THREE.Vector3(0, 3, 0);
-    const focusTarget = targetPosition ? new THREE.Vector3(targetPosition.x + 3, targetPosition.y, 0) : defaultTarget;
+    const focusTarget = targetPosition ? new THREE.Vector3(targetPosition.x + 2, targetPosition.y, 0) : defaultTarget;
     
-    // Controls need to be present for this to work
     if (controls) {
       controls.target.lerp(focusTarget, 2 * delta);
       controls.update();
@@ -243,26 +415,45 @@ export default function CyberpunkScene() {
   const activeSectionData = sections.find(s => s.id === activeSectionId);
 
   return (
-    <div className="relative w-full h-screen bg-[#050505] overflow-hidden">
+    <div className="relative w-full h-screen bg-[#020202] overflow-hidden font-sans">
       {/* UI Overlay for Details */}
       {activeSectionData && (
-        <div className="absolute top-1/2 right-10 -translate-y-1/2 z-10 max-w-md w-full animate-fade-in pointer-events-none">
-          <div className="bg-black/80 backdrop-blur-md border-2 p-8 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] pointer-events-auto" style={{ borderColor: activeSectionData.color }}>
-            <h2 className="text-4xl font-bold mb-2 text-white font-mono" style={{ textShadow: `0 0 10px ${activeSectionData.color}` }}>
+        <div className="absolute top-1/2 right-4 md:right-20 -translate-y-1/2 z-10 max-w-sm md:max-w-md w-full animate-fade-in pointer-events-none">
+          <div 
+            className="bg-black/90 backdrop-blur-xl border-l-4 p-8 shadow-[0_0_50px_rgba(0,0,0,0.8)] pointer-events-auto transition-all" 
+            style={{ borderColor: activeSectionData.color }}
+          >
+            <h2 className="text-3xl md:text-5xl font-black mb-4 text-white tracking-tighter" style={{ textShadow: `0 0 20px ${activeSectionData.color}` }}>
               {activeSectionData.title}
             </h2>
-            <div className="h-1 w-20 mb-6" style={{ backgroundColor: activeSectionData.color }} />
-            <p className="text-gray-300 text-lg font-mono leading-relaxed">
-              {activeSectionData.description}
-            </p>
-            
-            <div className="mt-6 text-sm text-gray-500 font-mono border-t border-gray-700 pt-4">
-              {activeSectionData.id === 'engineering' && "• RailTech Champion 2024\n• LoRaWAN Safety Systems\n• Siemens Project Management"}
-              {activeSectionData.id === 'music' && "• Grade 8 ABRSM\n• Classical Violin\n• Audio Engineering"}
-              {activeSectionData.id === 'achievements' && "• Lean Six Sigma Green Belt\n• Best Presenter IEEE SOLI"}
-              {activeSectionData.id === 'motorsports' && "• Vehicle Dynamics\n• Track Analysis"}
-              {activeSectionData.id === 'psychology' && "• Certified in Psychology of Learning\n• Conflict Resolution"}
-              {activeSectionData.id === 'archery' && "• Varsity Team Member\n• Half-Colours Award"}
+            <div className="text-gray-300 text-lg leading-relaxed font-light border-t border-gray-800 pt-4">
+              {/* Dynamic Content based on section */}
+              {activeSectionData.id === 'engineering' && (
+                <ul className="space-y-2 list-disc pl-4 marker:text-cyan-500">
+                  <li>RailTech Grand Challenge <strong>Champion</strong> (2024)</li>
+                  <li>Designed <strong>LoRaWAN</strong> Tunnel Safety Tracker</li>
+                  <li>Project Management Intern at <strong>Siemens AG</strong></li>
+                  <li>Published researcher (ICCAR, IEEE SOLI)</li>
+                </ul>
+              )}
+              {activeSectionData.id === 'music' && (
+                <ul className="space-y-2 list-disc pl-4 marker:text-pink-500">
+                  <li><strong>ABRSM Grade 8</strong> Music Theory</li>
+                  <li>Trained Classical Violinist</li>
+                  <li>Vocal performance & Audio Engineering</li>
+                </ul>
+              )}
+              {activeSectionData.id === 'achievements' && (
+                <ul className="space-y-2 list-disc pl-4 marker:text-purple-500">
+                  <li><strong>Lean Six Sigma</strong> Green Belt</li>
+                  <li>Best Presenter Award (IEEE SOLI)</li>
+                  <li>SAF Ammunition Reliability Officer</li>
+                </ul>
+              )}
+              {/* Fallback for others */}
+              {!['engineering', 'music', 'achievements'].includes(activeSectionData.id) && (
+                <p>{activeSectionData.description} - Details coming soon.</p>
+              )}
             </div>
           </div>
         </div>
@@ -270,69 +461,70 @@ export default function CyberpunkScene() {
 
       {/* Helper Text */}
       {!activeSectionId && (
-        <div className="absolute bottom-10 w-full text-center z-10 pointer-events-none">
-          <p className="text-cyan-400 font-mono text-sm bg-black/50 inline-block px-4 py-2 rounded animate-pulse border border-cyan-900">
-            CLICK A SIGN TO EXPLORE
+        <div className="absolute bottom-12 w-full text-center z-10 pointer-events-none">
+          <p className="text-white/50 text-xs tracking-[0.3em] uppercase animate-pulse">
+            Scroll to rotate • Click sign to inspect
           </p>
         </div>
       )}
 
-      <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 4, 14], fov: 50 }}>
-        {/* Suspense is required for async Drei components. Fallback=null can hide errors, so we use no fallback for now to let it render ASAP */}
+      <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 3, 14], fov: 45 }}>
         <Suspense fallback={null}>
-          <color attach="background" args={['#050505']} />
-          <fog attach="fog" args={['#050505', 10, 40]} />
+          {/* FOG for depth */}
+          <fog attach="fog" args={['#020202', 8, 35]} />
+          <color attach="background" args={['#020202']} />
 
           <CameraRig targetPosition={cameraTarget} />
           <OrbitControls 
-            makeDefault // Important for useThree controls access
+            makeDefault
             enablePan={false} 
-            maxPolarAngle={Math.PI / 2 - 0.05}
-            minPolarAngle={Math.PI / 4}
-            minDistance={8}
-            maxDistance={25}
+            maxPolarAngle={Math.PI / 2 - 0.02}
+            minPolarAngle={Math.PI / 3}
+            minDistance={6}
+            maxDistance={20}
           />
 
-          <ambientLight intensity={0.2} />
-          <hemisphereLight args={['#2e022d', '#02182e', 0.5]} />
+          {/* --- LIGHTING --- */}
+          <ambientLight intensity={0.2} color="#4c1d95" /> {/* Deep purple ambient */}
+          <hemisphereLight args={['#d946ef', '#0ea5e9', 0.3]} /> 
 
+          {/* Shop Highlight */}
           <spotLight 
-            position={[5, 10, 5]} 
-            angle={0.5} 
+            position={[5, 12, 5]} 
+            angle={0.4} 
             penumbra={0.5} 
-            intensity={2} 
-            color="#ff00ff" 
+            intensity={3} 
+            color="#f0abfc" 
             castShadow 
           />
-          
-          <pointLight position={[-6, 8, 2]} intensity={1} color="#06b6d4" distance={15} />
+          {/* Signpost Highlight */}
+          <spotLight position={[-6, 10, 5]} angle={0.3} intensity={2} color="#22d3ee" />
 
+          {/* --- SCENE --- */}
           <SignPost activeId={activeSectionId} onSectionSelect={handleSectionSelect} />
           <RamenStall />
+          <Wires />
           <NeonFloor />
 
-          {/* Background City Blocks */}
-          <group position={[0, 0, -10]}>
-             <Box args={[4, 15, 4]} position={[-8, 7.5, 0]}>
-               <meshStandardMaterial color="#0a0a0a" />
+          {/* --- BACKGROUND CITY SILHOUETTE --- */}
+          <group position={[0, 0, -8]}>
+             <Box args={[6, 20, 6]} position={[-10, 10, 0]}>
+               <meshStandardMaterial color="#050505" />
              </Box>
-             <Box args={[5, 12, 5]} position={[8, 6, 2]}>
-               <meshStandardMaterial color="#0a0a0a" />
+             <Box args={[8, 18, 8]} position={[10, 9, 2]}>
+               <meshStandardMaterial color="#050505" />
              </Box>
-             {/* Simple distant windows */}
-             {[...Array(10)].map((_, i) => (
-                <mesh key={i} position={[-8 + (Math.random() > 0.5 ? 2.1 : -2.1), Math.random() * 12 + 2, Math.random() * 2 - 1]}>
-                   <planeGeometry args={[0.2, 0.4]} />
-                   <meshBasicMaterial color="#ffff00" opacity={0.5} transparent />
+             {/* Distant window lights */}
+             {[...Array(15)].map((_, i) => (
+                <mesh key={i} position={[-10 + (Math.random() > 0.5 ? 3.1 : -3.1), Math.random() * 15 + 2, Math.random() * 4 - 2]}>
+                   <planeGeometry args={[0.3, 0.6]} />
+                   <meshBasicMaterial color={Math.random() > 0.8 ? "#ef4444" : "#fef08a"} opacity={0.8} transparent />
                 </mesh>
              ))}
           </group>
 
         </Suspense>
       </Canvas>
-      
-      {/* Overlaid Loader so you see progress instead of a blank screen */}
-      <Loader />
     </div>
   );
 }
