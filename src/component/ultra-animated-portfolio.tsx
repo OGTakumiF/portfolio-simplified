@@ -1,8 +1,7 @@
-import { Suspense, useRef, useState, useEffect } from 'react';
+import { Suspense, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Text, Float, MeshReflectorMaterial, Cylinder, Box, Sphere, OrbitControls, RoundedBox } from '@react-three/drei';
+import { Text, Float, MeshReflectorMaterial, Cylinder, Box, Sphere, OrbitControls, RoundedBox, Loader } from '@react-three/drei';
 import * as THREE from 'three';
-import gsap from 'gsap';
 
 // --- DATA ---
 const sections = [
@@ -25,14 +24,14 @@ function NeonFloor() {
         blur={[300, 100]}
         resolution={1024}
         mixBlur={1}
-        mixStrength={60} // Strength of the reflections
+        mixStrength={60}
         roughness={0.5}
         depthScale={1.2}
         minDepthThreshold={0.4}
         maxDepthThreshold={1.4}
-        color="#151520" // Dark floor color
+        color="#151520"
         metalness={0.8}
-        mirror={0.7} // Reflection clarity
+        mirror={0.7}
       />
     </mesh>
   );
@@ -55,16 +54,13 @@ function SignPost({ activeId, onSectionSelect }: { activeId: string | null, onSe
 
       {/* Street Lamps on the Pole */}
       <group position={[0, 9, 0]}>
-        {/* Arm */}
         <Box args={[3, 0.1, 0.1]} position={[0, 0, 0]}>
           <meshStandardMaterial color="#333" />
         </Box>
-        {/* Left Lamp (Purple) */}
         <pointLight position={[-1.4, -0.5, 0]} distance={8} intensity={3} color="#d946ef" />
         <Sphere args={[0.4]} position={[-1.4, -0.5, 0]}>
           <meshStandardMaterial emissive="#d946ef" emissiveIntensity={2} color="#000" />
         </Sphere>
-        {/* Right Lamp (Cyan) */}
         <pointLight position={[1.4, -0.5, 0]} distance={8} intensity={3} color="#06b6d4" />
         <Sphere args={[0.4]} position={[1.4, -0.5, 0]}>
           <meshStandardMaterial emissive="#06b6d4" emissiveIntensity={2} color="#000" />
@@ -73,7 +69,6 @@ function SignPost({ activeId, onSectionSelect }: { activeId: string | null, onSe
 
       {/* The Signs */}
       {sections.map((section, idx) => {
-        // Stagger signs left and right
         const isLeft = idx % 2 === 0;
         const yPos = 7.5 - idx * 1.1;
         const xOffset = isLeft ? -0.8 : 0.8;
@@ -85,38 +80,33 @@ function SignPost({ activeId, onSectionSelect }: { activeId: string | null, onSe
             position={[0, yPos, 0]} 
             onClick={(e) => {
               e.stopPropagation();
-              // Calculate world position for camera target
               const worldPos = new THREE.Vector3(0, yPos, 0).applyMatrix4(groupRef.current!.matrixWorld);
               onSectionSelect(section.id, worldPos);
             }}
             onPointerOver={() => document.body.style.cursor = 'pointer'}
             onPointerOut={() => document.body.style.cursor = 'auto'}
           >
-            {/* The Sign Board */}
             <Float speed={2} rotationIntensity={0.1} floatIntensity={0.2}>
               <group position={[xOffset * 1.2, 0, 0]} rotation={[0, rotY, 0]}>
-                {/* Arrow Shape Construction using Box */}
                 <RoundedBox args={[2.8, 0.8, 0.1]} radius={0.05} smoothness={4}>
                   <meshStandardMaterial 
                     color="#1a1a2e" 
                     emissive={activeId === section.id ? section.color : '#000'}
                     emissiveIntensity={activeId === section.id ? 0.5 : 0}
-                    border-color={section.color}
                   />
                 </RoundedBox>
-                {/* Neon Border Glow */}
                 <Box args={[2.9, 0.9, 0.05]} position={[0, 0, -0.04]}>
                    <meshBasicMaterial color={section.color} />
                 </Box>
 
-                {/* Text */}
+                {/* Text - Removed custom font to prevent loading errors */}
                 <Text
                   position={[0, 0, 0.06]}
                   fontSize={0.35}
                   color={activeId === section.id ? "#fff" : section.color}
                   anchorX="center"
                   anchorY="middle"
-                  font="https://fonts.gstatic.com/s/pressstart2p/v14/e3t4euO8T-267oIAQAu6jDQyK3nVivM.woff" // Pixel font for cyberpunk feel
+                  fontWeight="bold"
                 >
                   {section.title.toUpperCase()}
                 </Text>
@@ -129,7 +119,7 @@ function SignPost({ activeId, onSectionSelect }: { activeId: string | null, onSe
   );
 }
 
-// 3. The Ramen Shop (Central Hero)
+// 3. The Ramen Shop
 function RamenStall() {
   return (
     <group position={[2, 0, -2]} rotation={[0, -0.4, 0]}>
@@ -138,16 +128,15 @@ function RamenStall() {
         <meshStandardMaterial color="#2d2d3a" />
       </Box>
       
-      {/* The Roof / Awning */}
+      {/* The Roof */}
       <Box args={[6.2, 0.2, 5]} position={[0, 5.1, 0.5]} rotation={[0.1, 0, 0]}>
         <meshStandardMaterial color="#1a1a2e" />
       </Box>
       <Box args={[6, 1.5, 3]} position={[0, 6, 0.5]}>
-         {/* Top Sign Box */}
          <meshStandardMaterial color="#111" />
       </Box>
 
-      {/* Neon Sign "SEAN'S RAMEN" */}
+      {/* Neon Sign */}
       <group position={[0, 6, 2.1]}>
         <Text
           fontSize={0.8}
@@ -156,35 +145,28 @@ function RamenStall() {
           anchorY="middle"
           outlineWidth={0.02}
           outlineColor="#fff"
-          font="https://fonts.gstatic.com/s/pressstart2p/v14/e3t4euO8T-267oIAQAu6jDQyK3nVivM.woff"
+          fontWeight="bold"
         >
           SEAN'S RAMEN
           <meshBasicMaterial color="#ff00ff" toneMapped={false} />
         </Text>
-        {/* Glow effect behind text */}
         <pointLight position={[0, 0, 1]} intensity={2} color="#ff00ff" distance={5} />
       </group>
 
       {/* The Counter */}
       <Box args={[5.5, 1.2, 1]} position={[0, 0.6, 2.2]}>
-        <meshStandardMaterial color="#5c3a21" /> {/* Wood color */}
+        <meshStandardMaterial color="#5c3a21" />
       </Box>
 
-      {/* Hanging Lanterns/Decorations */}
+      {/* Hanging Lanterns */}
       <group position={[0, 4.5, 2.5]}>
          <Float speed={3} rotationIntensity={0.2} floatIntensity={0.2}>
-            <Sphere args={[0.3]} position={[-2, 0, 0]}>
-               <meshStandardMaterial emissive="#fbbf24" emissiveIntensity={3} color="orange" />
-               <pointLight intensity={1} color="#fbbf24" distance={3} />
-            </Sphere>
-            <Sphere args={[0.3]} position={[0, -0.2, 0]}>
-               <meshStandardMaterial emissive="#fbbf24" emissiveIntensity={3} color="orange" />
-               <pointLight intensity={1} color="#fbbf24" distance={3} />
-            </Sphere>
-            <Sphere args={[0.3]} position={[2, 0, 0]}>
-               <meshStandardMaterial emissive="#fbbf24" emissiveIntensity={3} color="orange" />
-               <pointLight intensity={1} color="#fbbf24" distance={3} />
-            </Sphere>
+            {[-2, 0, 2].map((x, i) => (
+              <Sphere key={i} args={[0.3]} position={[x, i === 1 ? -0.2 : 0, 0]}>
+                 <meshStandardMaterial emissive="#fbbf24" emissiveIntensity={3} color="orange" />
+                 <pointLight intensity={1} color="#fbbf24" distance={3} />
+              </Sphere>
+            ))}
          </Float>
       </group>
 
@@ -197,25 +179,20 @@ function RamenStall() {
         ))}
       </group>
 
-      {/* Holographic Menu (Floating) */}
+      {/* Holographic Menu */}
       <Float speed={2} rotationIntensity={0.1} floatIntensity={0.2}>
         <group position={[3.5, 2, 2]} rotation={[0, -0.5, 0]}>
            <Box args={[2, 3, 0.1]}>
               <meshBasicMaterial color="#000" opacity={0.8} transparent />
            </Box>
            <Box args={[2.05, 3.05, 0.05]}>
-              <meshBasicMaterial color="#06b6d4" /> {/* Cyan Border */}
+              <meshBasicMaterial color="#06b6d4" />
            </Box>
-           <Text 
-             position={[0, 1, 0.1]} 
-             fontSize={0.3} 
-             color="#06b6d4"
-             font="https://fonts.gstatic.com/s/pressstart2p/v14/e3t4euO8T-267oIAQAu6jDQyK3nVivM.woff"
-           >
+           <Text position={[0, 1, 0.1]} fontSize={0.3} color="#06b6d4" fontWeight="bold">
              MENU
            </Text>
            <Text position={[0, 0, 0.1]} fontSize={0.15} color="white" maxWidth={1.8} textAlign="center">
-             Click signs on left to order...
+             Click signs on left to explore...
            </Text>
         </group>
       </Float>
@@ -229,16 +206,16 @@ function CameraRig({ targetPosition }: { targetPosition: THREE.Vector3 | null })
   
   useFrame((state, delta) => {
     // Smoothly interpolate camera position
-    const defaultPos = new THREE.Vector3(0, 4, 14); // Default view
+    const defaultPos = new THREE.Vector3(0, 4, 14); 
     const focusPos = targetPosition ? new THREE.Vector3(targetPosition.x, targetPosition.y, targetPosition.z + 8) : defaultPos;
     
-    // Smooth camera movement
     state.camera.position.lerp(focusPos, 2 * delta);
     
     // Smooth lookAt target
     const defaultTarget = new THREE.Vector3(0, 3, 0);
     const focusTarget = targetPosition ? new THREE.Vector3(targetPosition.x + 3, targetPosition.y, 0) : defaultTarget;
     
+    // Controls need to be present for this to work
     if (controls) {
       controls.target.lerp(focusTarget, 2 * delta);
       controls.update();
@@ -254,7 +231,6 @@ export default function CyberpunkScene() {
   const [cameraTarget, setCameraTarget] = useState<THREE.Vector3 | null>(null);
 
   const handleSectionSelect = (id: string, worldPos: THREE.Vector3) => {
-    // Toggle: if clicking the active one, zoom out (reset)
     if (activeSectionId === id) {
       setActiveSectionId(null);
       setCameraTarget(null);
@@ -280,12 +256,13 @@ export default function CyberpunkScene() {
               {activeSectionData.description}
             </p>
             
-            {/* Placeholder Content based on ID */}
             <div className="mt-6 text-sm text-gray-500 font-mono border-t border-gray-700 pt-4">
               {activeSectionData.id === 'engineering' && "• RailTech Champion 2024\n• LoRaWAN Safety Systems\n• Siemens Project Management"}
               {activeSectionData.id === 'music' && "• Grade 8 ABRSM\n• Classical Violin\n• Audio Engineering"}
               {activeSectionData.id === 'achievements' && "• Lean Six Sigma Green Belt\n• Best Presenter IEEE SOLI"}
               {activeSectionData.id === 'motorsports' && "• Vehicle Dynamics\n• Track Analysis"}
+              {activeSectionData.id === 'psychology' && "• Certified in Psychology of Learning\n• Conflict Resolution"}
+              {activeSectionData.id === 'archery' && "• Varsity Team Member\n• Half-Colours Award"}
             </div>
           </div>
         </div>
@@ -301,26 +278,24 @@ export default function CyberpunkScene() {
       )}
 
       <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 4, 14], fov: 50 }}>
+        {/* Suspense is required for async Drei components. Fallback=null can hide errors, so we use no fallback for now to let it render ASAP */}
         <Suspense fallback={null}>
           <color attach="background" args={['#050505']} />
           <fog attach="fog" args={['#050505', 10, 40]} />
 
           <CameraRig targetPosition={cameraTarget} />
           <OrbitControls 
+            makeDefault // Important for useThree controls access
             enablePan={false} 
-            maxPolarAngle={Math.PI / 2 - 0.05} // Don't go below floor
+            maxPolarAngle={Math.PI / 2 - 0.05}
             minPolarAngle={Math.PI / 4}
             minDistance={8}
             maxDistance={25}
           />
 
-          {/* Lighting */}
           <ambientLight intensity={0.2} />
-          
-          {/* Main Environmental Light (Pink/Blue hue) */}
           <hemisphereLight args={['#2e022d', '#02182e', 0.5]} />
 
-          {/* Ramen Shop Area Light */}
           <spotLight 
             position={[5, 10, 5]} 
             angle={0.5} 
@@ -330,15 +305,13 @@ export default function CyberpunkScene() {
             castShadow 
           />
           
-          {/* Street Light Area */}
           <pointLight position={[-6, 8, 2]} intensity={1} color="#06b6d4" distance={15} />
 
-          {/* Scene Elements */}
           <SignPost activeId={activeSectionId} onSectionSelect={handleSectionSelect} />
           <RamenStall />
           <NeonFloor />
 
-          {/* Background Elements - City Silhouettes */}
+          {/* Background City Blocks */}
           <group position={[0, 0, -10]}>
              <Box args={[4, 15, 4]} position={[-8, 7.5, 0]}>
                <meshStandardMaterial color="#0a0a0a" />
@@ -346,7 +319,7 @@ export default function CyberpunkScene() {
              <Box args={[5, 12, 5]} position={[8, 6, 2]}>
                <meshStandardMaterial color="#0a0a0a" />
              </Box>
-             {/* Distant window lights */}
+             {/* Simple distant windows */}
              {[...Array(10)].map((_, i) => (
                 <mesh key={i} position={[-8 + (Math.random() > 0.5 ? 2.1 : -2.1), Math.random() * 12 + 2, Math.random() * 2 - 1]}>
                    <planeGeometry args={[0.2, 0.4]} />
@@ -357,6 +330,9 @@ export default function CyberpunkScene() {
 
         </Suspense>
       </Canvas>
+      
+      {/* Overlaid Loader so you see progress instead of a blank screen */}
+      <Loader />
     </div>
   );
 }
