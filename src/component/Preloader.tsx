@@ -10,8 +10,6 @@ const greetings = [
   "Willkommen",
   "Добро пожаловать",
   "Selamat Datang",
-  "வணக்கம்",
-  "नमस्ते",
   "Hola, Bienvenido",
   "Bienvenue",
 ];
@@ -30,7 +28,7 @@ export default function EnhancedPreloader({ onFinished }: { onFinished: () => vo
       return () => clearTimeout(closeTimer);
     }
 
-    // Increased duration slightly for readability and smoothness
+    // Duration for each greeting
     const timer = setTimeout(() => setIndex(index + 1), 250);
     return () => clearTimeout(timer);
   }, [index, onFinished]);
@@ -45,17 +43,26 @@ export default function EnhancedPreloader({ onFinished }: { onFinished: () => vo
           exit={{ opacity: 0, transition: { duration: 0.5 } }}
           className="fixed inset-0 bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 z-50 relative h-screen overflow-hidden flex items-center justify-center"
         >
-          {/* Animated background particles */}
+          {/* Animated background particles - Smoother Version */}
           <div className="absolute inset-0">
             {[...Array(50)].map((_, i) => (
-              <div
+              <motion.div
                 key={i}
-                className="absolute w-1 h-1 bg-cyan-400 rounded-full animate-pulse"
+                className="absolute w-1 h-1 bg-cyan-400 rounded-full"
                 style={{
                   left: `${Math.random() * 100}%`,
                   top: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 2}s`,
-                  animationDuration: `${2 + Math.random() * 3}s`
+                }}
+                // Replaced 'animate-pulse' with a smooth custom animation
+                animate={{ 
+                  opacity: [0.1, 0.7, 0.1], 
+                  scale: [1, 1.2, 1] 
+                }}
+                transition={{ 
+                  duration: 3 + Math.random() * 4, // Much slower duration (3-7s)
+                  repeat: Infinity, 
+                  ease: "easeInOut",
+                  delay: Math.random() * 2 
                 }}
               />
             ))}
@@ -80,10 +87,10 @@ export default function EnhancedPreloader({ onFinished }: { onFinished: () => vo
               {index < greetings.length && (
                 <motion.h1
                   key={greetings[index]}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
                   className="text-white text-4xl md:text-6xl font-bold whitespace-nowrap px-4 text-center bg-gradient-to-r from-cyan-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent"
                 >
                   {greetings[index]}
