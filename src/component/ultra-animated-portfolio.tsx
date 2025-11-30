@@ -346,6 +346,7 @@ function OrbitingSystem({ section, onClick, isActive, orbit }: any) {
   );
 }
 
+// --- CENTRAL STAR RESTORED (SUN) ---
 function CentralStar({ section }: { section?: Section }) {
   const shellRef = useRef<THREE.Mesh>(null);
   useFrame((state) => {
@@ -359,7 +360,6 @@ function CentralStar({ section }: { section?: Section }) {
   const color = section ? section.color : '#fbbf24'; 
   const emissive = section ? section.color : '#d97706'; 
 
-  // --- RESTORED ORIGINAL SUN ---
   return (
     <group position={[0, 0, 0]}>
       <mesh>
