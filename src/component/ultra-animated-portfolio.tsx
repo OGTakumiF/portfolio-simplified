@@ -1,4 +1,4 @@
-import { Suspense, useRef, useState, useMemo } from 'react';
+import { Suspense, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { 
   Text, Float, MeshReflectorMaterial, Cylinder, Box, Sphere, 
@@ -61,53 +61,106 @@ function Steam() {
   );
 }
 
-// --- CHARACTERS ---
+// --- CHARACTERS (HUMANS) ---
 
-function Robot({ position, rotation = [0, 0, 0], scale = 1, color = "#22d3ee", headColor="#e5e5e5" }: any) {
+interface HumanProps {
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: number;
+  role?: 'chef' | 'customer' | 'observer';
+  colors?: { skin: string; shirt: string; pants: string };
+}
+
+function Human({ position, rotation = [0, 0, 0], scale = 1, role = 'observer', colors = { skin: '#ffdbac', shirt: '#333', pants: '#222' } }: HumanProps) {
+  const isSitting = role === 'customer';
+  
   return (
     <group position={position} rotation={rotation} scale={scale}>
-        <Float speed={4} rotationIntensity={0.1} floatIntensity={0.2}>
-            {/* Head */}
-            <RoundedBox args={[0.5, 0.4, 0.45]} radius={0.1} position={[0, 1.6, 0]}>
-                <meshStandardMaterial color={headColor} roughness={0.3} />
-            </RoundedBox>
-            {/* Eyes (Visor) */}
-            <Box args={[0.45, 0.12, 0.2]} position={[0, 1.6, 0.15]}>
-                <meshBasicMaterial color={color} toneMapped={false} />
-            </Box>
-            {/* Antenna */}
-            <Cylinder args={[0.02, 0.02, 0.3]} position={[0.2, 1.9, 0]}>
-                <meshStandardMaterial color="#888" />
-            </Cylinder>
-            <Sphere args={[0.05]} position={[0.2, 2.05, 0]}>
-                 <meshBasicMaterial color="red" />
-            </Sphere>
-            
-            {/* Body */}
-            <RoundedBox args={[0.55, 0.7, 0.35]} radius={0.1} position={[0, 1, 0]}>
-                <meshStandardMaterial color="#333" />
-            </RoundedBox>
-            {/* Chest Light */}
-            <Box args={[0.2, 0.2, 0.1]} position={[0, 1.1, 0.18]}>
-                 <meshBasicMaterial color={color} opacity={0.5} transparent />
-            </Box>
-            
-            {/* Arms */}
-            <RoundedBox args={[0.15, 0.6, 0.15]} radius={0.05} position={[0.38, 1, 0]} rotation={[0, 0, -0.1]}>
-                <meshStandardMaterial color="#444" />
-            </RoundedBox>
-            <RoundedBox args={[0.15, 0.6, 0.15]} radius={0.05} position={[-0.38, 1, 0]} rotation={[0, 0, 0.1]}>
-                <meshStandardMaterial color="#444" />
-            </RoundedBox>
+      <Float speed={2} rotationIntensity={0.1} floatIntensity={0.1}>
+        {/* Head */}
+        <Sphere args={[0.25, 16, 16]} position={[0, 1.6, 0]}>
+          <meshStandardMaterial color={colors.skin} roughness={0.5} />
+        </Sphere>
+        
+        {/* Chef Hat */}
+        {role === 'chef' && (
+          <group position={[0, 1.8, 0]}>
+             {/* Hat Base */}
+             <Cylinder args={[0.22, 0.2, 0.15]} position={[0, 0.05, 0]}>
+                <meshStandardMaterial color="#fff" />
+             </Cylinder>
+             {/* Hat Top */}
+             <Cylinder args={[0.25, 0.22, 0.25]} position={[0, 0.25, 0]}>
+                <meshStandardMaterial color="#fff" />
+             </Cylinder>
+          </group>
+        )}
 
-            {/* Legs */}
-            <RoundedBox args={[0.18, 0.6, 0.18]} radius={0.05} position={[-0.18, 0.4, 0]}>
-                <meshStandardMaterial color="#222" />
-            </RoundedBox>
-            <RoundedBox args={[0.18, 0.6, 0.18]} radius={0.05} position={[0.18, 0.4, 0]}>
-                <meshStandardMaterial color="#222" />
-            </RoundedBox>
-        </Float>
+        {/* Body (Shirt) */}
+        <RoundedBox args={[0.5, 0.7, 0.3]} radius={0.05} position={[0, 1, 0]}>
+          <meshStandardMaterial color={colors.shirt} />
+        </RoundedBox>
+        {/* Apron for Chef */}
+        {role === 'chef' && (
+           <Box args={[0.52, 0.6, 0.05]} position={[0, 0.8, 0.16]}>
+              <meshStandardMaterial color="#eee" />
+           </Box>
+        )}
+
+        {/* Arms */}
+        <group position={[0, 1, 0]}>
+           {/* Left Arm */}
+           <RoundedBox args={[0.15, 0.6, 0.15]} position={[-0.35, 0, 0]} rotation={[0, 0, 0.1]}>
+              <meshStandardMaterial color={colors.shirt} />
+           </RoundedBox>
+           <Sphere args={[0.08]} position={[-0.38, -0.3, 0]}>
+              <meshStandardMaterial color={colors.skin} />
+           </Sphere>
+           
+           {/* Right Arm */}
+           <group position={[0.35, 0.2, 0]} rotation={[0, 0, -0.1]}>
+              <RoundedBox args={[0.15, 0.6, 0.15]} position={[0, -0.2, 0]} rotation={[role === 'customer' || role === 'chef' ? -0.5 : 0, 0, 0]}>
+                 <meshStandardMaterial color={colors.shirt} />
+              </RoundedBox>
+              <Sphere args={[0.08]} position={[0, -0.5, role === 'customer' || role === 'chef' ? 0.2 : 0]}>
+                 <meshStandardMaterial color={colors.skin} />
+              </Sphere>
+           </group>
+        </group>
+
+        {/* Legs */}
+        <group position={[0, 0.65, 0]}>
+           {isSitting ? (
+             // Sitting Legs
+             <group>
+               {/* Thighs */}
+               <RoundedBox args={[0.18, 0.4, 0.18]} position={[-0.15, -0.1, 0.15]} rotation={[-1.5, 0, -0.1]}>
+                  <meshStandardMaterial color={colors.pants} />
+               </RoundedBox>
+               <RoundedBox args={[0.18, 0.4, 0.18]} position={[0.15, -0.1, 0.15]} rotation={[-1.5, 0, 0.1]}>
+                  <meshStandardMaterial color={colors.pants} />
+               </RoundedBox>
+               {/* Shins */}
+               <RoundedBox args={[0.16, 0.4, 0.16]} position={[-0.15, -0.1, 0.35]} rotation={[0, 0, 0]}>
+                  <meshStandardMaterial color={colors.pants} />
+               </RoundedBox>
+               <RoundedBox args={[0.16, 0.4, 0.16]} position={[0.15, -0.1, 0.35]} rotation={[0, 0, 0]}>
+                  <meshStandardMaterial color={colors.pants} />
+               </RoundedBox>
+             </group>
+           ) : (
+             // Standing Legs
+             <group>
+               <RoundedBox args={[0.18, 0.7, 0.18]} position={[-0.15, -0.35, 0]}>
+                  <meshStandardMaterial color={colors.pants} />
+               </RoundedBox>
+               <RoundedBox args={[0.18, 0.7, 0.18]} position={[0.15, -0.35, 0]}>
+                  <meshStandardMaterial color={colors.pants} />
+               </RoundedBox>
+             </group>
+           )}
+        </group>
+      </Float>
     </group>
   );
 }
@@ -365,13 +418,32 @@ function RamenStall() {
          </Text>
       </group>
 
-      {/* --- ROBOTS (CHARACTERS) --- */}
-      {/* 1. The Chef (Inside) */}
-      <Robot position={[0, 1.2, 0.5]} scale={0.9} color="#d946ef" /> 
-      {/* 2. The Customer (On Stool) */}
-      <Robot position={[-1.5, 1.1, 2.5]} rotation={[0, 0.5, 0]} scale={0.9} color="#fbbf24" />
-      {/* 3. The Observer (Near Signpost) */}
-      <Robot position={[-3, 0.5, 3]} rotation={[0, -0.8, 0]} scale={1} color="#22d3ee" />
+      {/* --- HUMANS (CHARACTERS) --- */}
+      {/* 1. The Chef (Inside, standing) */}
+      <Human 
+        position={[0, 1.2, 0.5]} 
+        scale={0.9} 
+        role="chef" 
+        colors={{ skin: '#f5d0b0', shirt: '#fff', pants: '#222' }} 
+      /> 
+      
+      {/* 2. The Customer (On Stool, sitting) */}
+      <Human 
+        position={[-1.5, 1.1, 2.5]} 
+        rotation={[0, 0.5, 0]} 
+        scale={0.9} 
+        role="customer"
+        colors={{ skin: '#8d5524', shirt: '#f59e0b', pants: '#1e3a8a' }} 
+      />
+      
+      {/* 3. The Observer (Near Signpost, standing) */}
+      <Human 
+        position={[-3, 0.5, 3]} 
+        rotation={[0, -0.8, 0]} 
+        scale={1} 
+        role="observer"
+        colors={{ skin: '#e0ac69', shirt: '#06b6d4', pants: '#374151' }} 
+      />
 
     </group>
   );
