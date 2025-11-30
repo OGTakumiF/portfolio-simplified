@@ -1,6 +1,6 @@
 import { Suspense, useRef, useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
-import { Text, Stars, OrbitControls, Environment, Sparkles, Trail, Sphere, MeshDistortMaterial } from '@react-three/drei';
+import { Text, Stars, OrbitControls, Environment, Sparkles, Trail, Sphere, MeshDistortMaterial, RoundedBox, Cylinder } from '@react-three/drei';
 import {
   Menu, X, Zap, Music, Heart, Target, Trophy, Briefcase, ArrowRight, Sparkles as SparklesIcon, ArrowLeft
 } from 'lucide-react';
@@ -251,9 +251,103 @@ function BackgroundImage() {
   const texture = useLoader(THREE.TextureLoader, "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=2048&auto=format&fit=crop");
   return (
     <mesh>
-      <sphereGeometry args={[800, 64, 64]} />
+      <sphereGeometry args={[500, 64, 64]} />
       <meshBasicMaterial map={texture} side={THREE.BackSide} transparent={true} opacity={0.6} />
     </mesh>
+  );
+}
+
+// --- NEW CHARACTER COMPONENT ---
+// Based on description: Orange hoodie, green vest, beard, dark hair
+function MyAvatar() {
+  const group = useRef<THREE.Group>(null);
+  
+  useFrame((state) => {
+    if (group.current) {
+      // Gentle float
+      group.current.position.y = Math.sin(state.clock.elapsedTime * 1.5) * 0.5;
+      // Gentle rotation to greet user
+      group.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.2;
+    }
+  });
+
+  return (
+    <group ref={group}>
+      {/* --- HEAD --- */}
+      {/* Face */}
+      <Sphere args={[1.8, 32, 32]} position={[0, 4, 0]}>
+        <meshStandardMaterial color="#f0c0a0" /> {/* Skin tone */}
+      </Sphere>
+      {/* Hair (Dark Brown) */}
+      <RoundedBox args={[3.8, 1.5, 3.8]} radius={0.5} position={[0, 5.2, 0]}>
+        <meshStandardMaterial color="#3e2723" />
+      </RoundedBox>
+      <Sphere args={[2, 32, 32]} position={[0, 4.8, -0.5]}>
+        <meshStandardMaterial color="#3e2723" />
+      </Sphere>
+      {/* Beard (Dark Brown) */}
+      <RoundedBox args={[3.6, 1.2, 1]} radius={0.5} position={[0, 2.8, 1.2]}>
+        <meshStandardMaterial color="#3e2723" />
+      </RoundedBox>
+      {/* Eyes */}
+      <Sphere args={[0.3]} position={[-0.8, 4.2, 1.6]}>
+        <meshStandardMaterial color="black" />
+      </Sphere>
+      <Sphere args={[0.3]} position={[0.8, 4.2, 1.6]}>
+        <meshStandardMaterial color="black" />
+      </Sphere>
+      {/* Nose */}
+      <Sphere args={[0.4]} position={[0, 3.8, 1.8]}>
+        <meshStandardMaterial color="#e0b090" />
+      </Sphere>
+
+      {/* --- BODY --- */}
+      {/* Orange Hoodie Torso */}
+      <RoundedBox args={[3.5, 4.5, 2]} radius={0.5} position={[0, 0.5, 0]}>
+        <meshStandardMaterial color="#f57c00" /> {/* Orange */}
+      </RoundedBox>
+      {/* Green Vest (Slightly larger) */}
+      <RoundedBox args={[3.8, 4.2, 2.3]} radius={0.5} position={[0, 0.6, 0]}>
+        <meshStandardMaterial color="#2e7d32" /> {/* Green */}
+      </RoundedBox>
+      {/* Hoodie String/Detail */}
+      <Cylinder args={[0.1, 0.1, 1.5]} position={[-0.5, 1.5, 1.2]} rotation={[0,0,-0.2]}>
+        <meshStandardMaterial color="#fff" />
+      </Cylinder>
+      <Cylinder args={[0.1, 0.1, 1.5]} position={[0.5, 1.5, 1.2]} rotation={[0,0,0.2]}>
+        <meshStandardMaterial color="#fff" />
+      </Cylinder>
+
+      {/* --- ARMS --- */}
+      {/* Left Arm (Orange) */}
+      <group position={[-2.2, 2, 0]} rotation={[0, 0, 0.2]}>
+        <RoundedBox args={[1.2, 3.5, 1.2]} radius={0.4} position={[0, -1.5, 0]}>
+          <meshStandardMaterial color="#f57c00" />
+        </RoundedBox>
+        <Sphere args={[0.7]} position={[0, -3.5, 0]}>
+          <meshStandardMaterial color="#f0c0a0" />
+        </Sphere>
+      </group>
+      {/* Right Arm (Orange) */}
+      <group position={[2.2, 2, 0]} rotation={[0, 0, -0.2]}>
+        <RoundedBox args={[1.2, 3.5, 1.2]} radius={0.4} position={[0, -1.5, 0]}>
+          <meshStandardMaterial color="#f57c00" />
+        </RoundedBox>
+        <Sphere args={[0.7]} position={[0, -3.5, 0]}>
+          <meshStandardMaterial color="#f0c0a0" />
+        </Sphere>
+      </group>
+
+      {/* --- LEGS --- */}
+      {/* Left Leg (Jeans) */}
+      <RoundedBox args={[1.4, 4, 1.4]} radius={0.4} position={[-1, -3.5, 0]}>
+        <meshStandardMaterial color="#455a64" /> {/* Grey/Blue */}
+      </RoundedBox>
+      {/* Right Leg (Jeans) */}
+      <RoundedBox args={[1.4, 4, 1.4]} radius={0.4} position={[1, -3.5, 0]}>
+        <meshStandardMaterial color="#455a64" />
+      </RoundedBox>
+    </group>
   );
 }
 
@@ -347,29 +441,17 @@ function OrbitingSystem({ section, onClick, isActive, orbit }: any) {
 }
 
 function CentralStar({ section }: { section?: Section }) {
-  const shellRef = useRef<THREE.Mesh>(null);
-  useFrame((state) => {
-    if (shellRef.current) {
-      shellRef.current.rotation.y += 0.005;
-      shellRef.current.rotation.z += 0.002;
-    }
-  });
-
   const title = section ? section.title : 'Sean Ogta Goh';
-  const color = section ? section.color : '#fbbf24'; 
-  const emissive = section ? section.color : '#d97706'; 
-
+  // Removed old MeshDistortMaterial and replaced with Avatar
   return (
     <group position={[0, 0, 0]}>
-      <mesh>
-        <sphereGeometry args={[4.5, 64, 64]} />
-        <MeshDistortMaterial color={color} emissive={emissive} emissiveIntensity={3} roughness={0} metalness={0.2} distort={0.3} speed={2} />
-      </mesh>
-      <mesh ref={shellRef}>
-        <icosahedronGeometry args={[5.2, 2]} />
-        <meshBasicMaterial color={emissive} transparent opacity={0.1} wireframe />
-      </mesh>
-      <pointLight intensity={5} distance={50} color={color} />
+      {/* --- REPLACED SPHERE WITH AVATAR --- */}
+      <MyAvatar /> 
+      
+      {/* Light for the avatar */}
+      <pointLight intensity={2} distance={20} color="white" position={[5, 5, 5]} />
+      <ambientLight intensity={0.5} />
+
       <Text position={[0, 7.5, 0]} fontSize={4} fontWeight="bold" color="white" anchorX="center" anchorY="middle" outlineWidth={0.2} outlineColor="#000000">
         {title}
       </Text>
@@ -397,8 +479,8 @@ function SystemDetails({ activeSection, planets, onPlanetClick }: any) {
 function GalaxyScene({ activeSection, onSectionClick, view, planets, onPlanetClick }: any) {
   return (
     <>
-      <ambientLight intensity={0.1} /> 
-      <directionalLight position={[10, 10, 5]} intensity={1} />
+      <ambientLight intensity={0.3} /> 
+      <directionalLight position={[10, 10, 5]} intensity={1.5} />
       <BackgroundImage />
       <ParticleField /> 
       {view === 'galaxy' ? (
@@ -420,19 +502,16 @@ function GalaxyScene({ activeSection, onSectionClick, view, planets, onPlanetCli
   );
 }
 
-// --- UPDATED INTRO RIG: TRIGGERED BY PROP ---
 function IntroCameraRig({ active }: { active: boolean }) {
   const { camera } = useThree();
   const [hasStarted, setHasStarted] = useState(false);
   
-  // Set initial position immediately (Deep Space)
   useLayoutEffect(() => {
     if (!hasStarted) {
-      camera.position.set(0, 100, 2000); // Super far away
+      camera.position.set(0, 100, 2000); 
     }
   }, [camera, hasStarted]);
 
-  // Trigger Fly-In only when active becomes false (Intro finishes)
   useEffect(() => {
     if (!active && !hasStarted) {
       setHasStarted(true);
@@ -440,7 +519,7 @@ function IntroCameraRig({ active }: { active: boolean }) {
         x: 0,
         y: 20,
         z: 40,
-        duration: 4, // Fast warp speed
+        duration: 4, 
         ease: "power2.out"
       });
     }
@@ -539,7 +618,7 @@ export default function AnimatedPortfolio({ introPlaying = false }: { introPlayi
       <Canvas camera={{ position: [0, 100, 2000], fov: 50 }} gl={{ antialias: true, alpha: true }}>
         <Suspense fallback={null}>
           <color attach="background" args={['#000000']} />
-           <IntroCameraRig active={introPlaying} /> {/* Pass state to RIG */}
+           <IntroCameraRig active={introPlaying} />
            <GalaxyScene activeSection={activeSection} onSectionClick={handleSectionClick} view={view} planets={planets} onPlanetClick={handlePlanetClick} />
            <OrbitControls ref={controlsRef} enablePan={false} enableZoom={true} enableRotate={true} maxDistance={150} minDistance={10} maxPolarAngle={Math.PI / 1.5} minPolarAngle={Math.PI / 4} autoRotate={false} />
         </Suspense>
