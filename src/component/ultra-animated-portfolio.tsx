@@ -1,558 +1,796 @@
-import { Suspense, useRef, useState, useMemo } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { 
-  Text, Float, MeshReflectorMaterial, Cylinder, Box, Sphere, 
-  OrbitControls, RoundedBox, CubicBezierLine, Environment
-} from '@react-three/drei';
+import { Suspense, useRef, useState } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { Text, Float, Stars, OrbitControls, Environment, Sparkles, Trail, Sphere, MeshDistortMaterial } from '@react-three/drei';
+import {
+  Menu, X, Zap, Music, Heart, Target, Trophy, Briefcase, ArrowRight, Sparkles as SparklesIcon, ArrowLeft
+} from 'lucide-react';
 import * as THREE from 'three';
+import gsap from 'gsap';
 
-// --- DATA ---
-const sections = [
-  { id: 'engineering', title: 'ENGINEERING', color: '#3b82f6', description: "Rail & Infra" },
-  { id: 'music', title: 'MUSIC', color: '#ec4899', description: "Violin & Vocals" },
-  { id: 'psychology', title: 'PSYCHOLOGY', color: '#ef4444', description: "Mentorship" },
-  { id: 'motorsports', title: 'MOTORSPORTS', color: '#fbbf24', description: "Dynamics" },
-  { id: 'archery', title: 'ARCHERY', color: '#10b981', description: "Discipline" },
-  { id: 'achievements', title: 'AWARDS', color: '#8b5cf6', description: "Excellence" },
+// --- SHADERS ---
+const vertexShader = `
+  varying vec3 vNormal;
+  void main() {
+    vNormal = normalize( normalMatrix * normal );
+    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+  }
+`;
+
+const fragmentShader = `
+  varying vec3 vNormal;
+  uniform vec3 glowColor;
+  void main() {
+    float intensity = pow( 0.6 - dot( vNormal, vec3( 0.0, 0.0, 1.0 ) ), 2.0 );
+    gl_FragColor = vec4( glowColor, 1.0 ) * intensity * 0.8;
+  }
+`;
+// --- END OF SHADERS ---
+
+interface Planet {
+  id: string;
+  title: string;
+  color: string;
+  darkColor: string;
+  detail?: string;
+}
+
+interface Section {
+  id: string;
+  title: string;
+  position: [number, number, number];
+  color: string;
+  darkColor: string;
+  icon: any;
+  content: {
+    heading: string;
+    description: string;
+    planets: Planet[];
+    highlights?: string[];
+  };
+}
+
+const sections: Section[] = [
+  {
+    id: 'engineering',
+    title: 'Engineering',
+    position: [0, 2, 0],
+    color: '#06b6d4',
+    darkColor: '#164e63',
+    icon: Zap,
+    content: {
+      heading: 'Sustainable Infrastructure Engineer',
+      description: 'Specialized in Railway Engineering & Power Systems',
+      planets: [
+        { 
+          id: 'p1', 
+          title: 'B.Eng. Sustainable Infrastructure (Land), Honours with Merit', 
+          color: '#38bdf8', 
+          darkColor: '#0c4a6e',
+          detail: "Graduated with Honours with Merit from the Singapore Institute of Technology (SIT).\n\nMy studies in Sustainable Infrastructure Engineering (Land) provided a strong foundation in designing and managing modern infrastructure. I was also an active member of the SIE Student Member Committee and a student member of the IEEE and IES."
+        },
+        { 
+          id: 'p2', 
+          title: 'Diploma in Electrical Engineering (Power Specialisation)', 
+          color: '#38bdf8', 
+          darkColor: '#0c4a6e',
+          detail: "Obtained a Diploma from Ngee Ann Polytechnic with a specialisation in Electrical Power Engineering.\n\nThis equipped me with core technical skills in power distribution, control systems, and electronics."
+        },
+        { 
+          id: 'p3', 
+          title: 'Champion, Singapore RailTech Grand Challenge 2024', 
+          color: '#38bdf8', 
+          darkColor: '#0c4a6e',
+          detail: "Achieved 1st Place (Champion) in the Open Innovation Challenge at the Singapore RailTech Grand Challenge (SGRTGC) 2024.\n\nThis award recognized an innovative solution developed for the rail industry, based on work from the LongRange Safety Tracker project."
+        },
+        { 
+          id: 'p4', 
+          title: 'Designed LoRaWAN Safety Tracker for Railway Tunnels', 
+          color: '#38bdf8', 
+          darkColor: '#0c4a6e',
+          detail: "Designed and prototyped a LoRaWAN tracking and emergency alert system to enhance the safety of maintenance personnel in railway tunnels.\n\nThis project was advised by SBS Transit Rail and was an enhancement based on award-winning solutions for an LTA open innovation competition."
+        },
+        { 
+          id: 'p5', 
+          title: 'Published Academic Papers & Best Presenter Award', 
+          color: '#38bdf8', 
+          darkColor: '#0c4a6e',
+          detail: "Co-authored multiple conference papers on this railway safety technology:\n\n• 'Design and Prototyping of a Real-Time Location Tracking System...' for the 2025 11th International Conference on Control, Automation and Robotics (ICCAR).\n\n• 'A Real-Time LoRaWAN Tracking System in Railway Tunnels...' (In Press).\n\n• Received the Best Presenter Award at the IEEE SOLI 2025 Conference."
+        },
+        { 
+          id: 'p6', 
+          title: 'Project Management Intern at Siemens AG (Rail Comms)', 
+          color: '#38bdf8', 
+          darkColor: '#0c4a6e',
+          detail: "As a Project Management Intern at Siemens AG, I managed the renewal of rail communications systems.\n\nMy responsibilities included coordinating with subcontractors and operators, designing PA system front-ends (SLDs and cable routing), overseeing on-site installation and commissioning, and resolving on-site technical issues."
+        }
+      ],
+      highlights: ['Railway Systems', 'Power Distribution', 'Infrastructure Design']
+    }
+  },
+  {
+    id: 'music',
+    title: 'Music',
+    position: [10, 2, -8],
+    color: '#ec4899',
+    darkColor: '#831843',
+    icon: Music,
+    content: {
+      heading: 'Musician & Performer',
+      description: 'Trained violinist with vocal capabilities',
+      planets: [
+        { id: 'm1', title: 'Classical violin performance and training', color: '#f472b6', darkColor: '#831843', detail: "Trained in classical violin performance and technique." },
+        { id: 'm2', title: 'Vocal training and professional performance', color: '#f472b6', darkColor: '#831843', detail: "Experienced in vocal training and professional performance settings." },
+        { id: 'm3', title: 'Voice-over work for media projects', color: '#f472b6', darkColor: '#831843' },
+        { id: 'm4', title: 'Studio recording experience', color: '#f472b6', darkColor: '#831843' },
+        { id: 'm5', title: 'Music production and arrangement', color: '#f472b6', darkColor: '#831843' },
+        { id: 'm6', title: 'ABRSM Grade 8 Music Theory', color: '#f472b6', darkColor: '#831843', detail: "Certified with a Level 3 Certification in Graded Examination in Music Theory (Grade 8) from ABRSM, demonstrating an advanced understanding of music theory." },
+      ],
+      highlights: ['Violin', 'Vocals', 'Performance']
+    }
+  },
+  {
+    id: 'psychology',
+    title: 'Psychology',
+    position: [-10, 2, -8],
+    color: '#f87171',
+    darkColor: '#7f1d1d',
+    icon: Heart,
+    content: {
+      heading: 'Psychology & Advisory',
+      description: 'Passionate about understanding and helping others',
+      planets: [
+        { id: 'ps1', title: 'Regular advisor for friends and family', color: '#fb7185', darkColor: '#7f1d1d' },
+        { id: 'ps2', title: 'Community support and mentorship', color: '#fb7185', darkColor: '#7f1d1d' },
+        { id: 'ps3', title: 'Empathetic problem-solving approach', color: '#fb7185', darkColor: '#7f1d1d' },
+        { id: 'ps4', title: 'Personal and professional development focus', color: '#fb7185', darkColor: '#7f1d1d' },
+        { id: 'ps5', title: 'Conflict resolution and mediation', color: '#fb7185', darkColor: '#7f1d1d' },
+        { id: 'ps6', title: 'Certified in Psychology of Learning', color: '#fb7185', darkColor: '#7f1d1d', detail: "Completed a certification in 'Psicologia dell'apprendimento' (Psychology of Learning) from FedericaX, reflecting a personal interest in human behavior and development." },
+      ],
+      highlights: ['Mentorship', 'Counseling', 'Development']
+    }
+  },
+  {
+    id: 'motorsports',
+    title: 'Motorsports',
+    position: [10, 2, 8],
+    color: '#fbbf24',
+    darkColor: '#78350f',
+    icon: Briefcase,
+    content: {
+      heading: 'Motorsports Enthusiast',
+      description: 'Speed, precision, and engineering excellence',
+      planets: [
+        { id: 'mo1', title: 'Deep interest in vehicle dynamics', color: '#fcd34d', darkColor: '#78350f' },
+        { id: 'mo2', title: 'Racing strategy and competitive analytics', color: '#fcd34d', darkColor: '#78350f' },
+        { id: 'mo3', title: 'High-performance engineering principles', color: '#fcd34d', darkColor: '#78350f' },
+        { id: 'mo4', title: 'Motorsports technology and innovations', color: '#fcd34d', darkColor: '#78350f' },
+        { id: 'mo5', title: 'Passion for precision and speed', color: '#fcd34d', darkColor: '#78350f' },
+        { id: 'mo6', title: 'Class 3 Drivers License', color: '#fcd34d', darkColor: '#78350f', detail: "Holding a Class 3 Drivers License since 2020." },
+      ],
+      highlights: ['Performance', 'Dynamics', 'Racing']
+    }
+  },
+  {
+    id: 'archery',
+    title: 'Archery',
+    position: [-10, 2, 8],
+    color: '#34d399',
+    darkColor: '#064e3b',
+    icon: Target,
+    content: {
+      heading: 'Archery Practice',
+      description: 'Focus, discipline, and precision mastery',
+      planets: [
+        { id: 'a1', title: 'Varsity Archer (SIT & NP)', color: '#4ade80', darkColor: '#064e3b', detail: "Competed as a member of the varsity archery teams at both Singapore Institute of Technology (SIT) and Ngee Ann Polytechnic." },
+        { id: 'a2', title: 'Half-Colours Award (Ngee Ann Polytechnic)', color: '#4ade80', darkColor: '#064e3b', detail: "Received the Half-Colours Award from Ngee Ann Polytechnic, recognizing achievements and contributions to the varsity archery team." },
+        { id: 'a3', title: 'Discipline & Focus', color: '#4ade80', darkColor: '#064e3b', detail: "Archery practice hones mental discipline, focus, and a philosophy of continuous improvement, which I apply to engineering and technical challenges." },
+        { id: 'a4', title: 'Mental discipline and focus training', color: '#4ade80', darkColor: '#064e3b' },
+        { id: 'a5', title: 'Precision accuracy development', color: '#4ade80', darkColor: '#064e3b' },
+        { id: 'a6', title: 'Continuous improvement philosophy', color: '#4ade80', darkColor: '#064e3b' }
+      ],
+      highlights: ['Precision', 'Focus', 'Discipline']
+    }
+  },
+  {
+    id: 'achievements',
+    title: 'Achievements',
+    position: [0, 2, -14],
+    color: '#fcd34d',
+    darkColor: '#713f12',
+    icon: Trophy,
+    content: {
+      heading: 'Multi-Disciplinary Excellence',
+      description: 'Combining technical expertise with creative passion',
+      planets: [
+        { id: 'ac1', title: 'Lean Six Sigma (Green Belt)', color: '#fde047', darkColor: '#713f12', detail: "Certified Lean Six Sigma Green Belt, demonstrating skills in process improvement, statistical analysis, and quality management." },
+        { id: 'ac2', title: 'Professional Certifications', color: '#fde047', darkColor: '#713f12', detail: "Holds multiple professional certifications including:\n\n• 'Mastering systems thinking in practice' (The Open University)\n• 'SAP Enterprise Services (Materials Management)'\n• 'Apply Workplace Safety and Health in Construction Sites'" },
+        { id: 'ac3', title: 'SAF Ammunition Reliability SO (NS)', color: '#fde047', darkColor: '#713f12', detail: "During National Service, served as an Ammunition Reliability SO. Centralised disparate data into a master repository, enabling the creation of the annual Tri-Service Ammunition Surveillance Work Plan. Also conducted root cause analysis on ammunition incident reports." },
+        { id: 'ac4', title: 'SAFAC Digital-In-Charge (NS)', color: '#fde047', darkColor: '#713f12', detail: "Also served as the Digital-In-Charge for SAF Ammunition Command. Directed all content for SAFAC Firepower TV to enhance safety and security awareness. Managed media production and live event coverage for key events like Change of Command and SAF Day." },
+        { id: 'ac5', title: 'Installation Engineer Intern (ST Eng.)', color: '#fde047', darkColor: '#713f12', detail: "As an intern, I supervised on-site installation of\nPlatform Screen Door (PSD) systems, ensuring WSH compliance. I also\nprepared reports, assisted the PM with schedules, and participated in\nfault findings and technical investigations." },
+        { id: 'ac6', title: 'Bridging engineering, arts, and personal development', color: '#fde047', darkColor: '#713f12' }
+      ],
+      highlights: ['Excellence', 'Leadership', 'Innovation']
+    }
+  }
 ];
 
-// --- HELPER COMPONENTS ---
+function ParticleField() {
+  const particles = useRef<THREE.Points>(null);
+  const particleCount = 3000;
 
-function Cable({ start, end, v1, v2, color = '#111' }: any) {
-  return (
-    <CubicBezierLine
-      start={start}
-      end={end}
-      midA={v1}
-      midB={v2}
-      color={color}
-      lineWidth={1.5}
-    />
-  );
-}
-
-// --- CARS ---
-
-function Wheel({ position, rotation, rimColor = "#888" }: any) {
-  return (
-    <group position={position} rotation={rotation}>
-      <Cylinder args={[0.35, 0.35, 0.25, 16]} rotation={[Math.PI / 2, 0, 0]}>
-        <meshStandardMaterial color="#111" />
-      </Cylinder>
-      {/* Rim */}
-      <Cylinder args={[0.2, 0.2, 0.26, 8]} rotation={[Math.PI / 2, 0, 0]}>
-        <meshStandardMaterial color={rimColor} metalness={0.6} roughness={0.3} />
-      </Cylinder>
-      {/* Hub */}
-      <Cylinder args={[0.05, 0.05, 0.27, 8]} rotation={[Math.PI / 2, 0, 0]}>
-        <meshStandardMaterial color="#111" />
-      </Cylinder>
-    </group>
-  );
-}
-
-function AE86({ position, rotation }: any) {
-  return (
-    <group position={position} rotation={rotation}>
-      {/* --- CHASSIS --- */}
-      {/* Lower Body (White) */}
-      <RoundedBox args={[1.8, 0.6, 4.2]} radius={0.05} position={[0, 0.6, 0]}>
-        <meshStandardMaterial color="#fff" />
-      </RoundedBox>
-      {/* Black Strip (Panda Scheme) */}
-      <Box args={[1.82, 0.25, 4.22]} position={[0, 0.45, 0]}>
-        <meshStandardMaterial color="#111" />
-      </Box>
+  useFrame((state) => {
+    if (particles.current) {
+      particles.current.rotation.x = state.clock.elapsedTime * 0.0001;
+      particles.current.rotation.y = state.clock.elapsedTime * 0.0002;
       
-      {/* Cabin (Greenhouse) */}
-      <group position={[0, 1.3, 0.2]}>
-         {/* Main Roof Block */}
-         <RoundedBox args={[1.5, 0.7, 1.8]} radius={0.1}>
-            <meshStandardMaterial color="#fff" />
-         </RoundedBox>
-         {/* Windows (Black Glass) */}
-         <Box args={[1.52, 0.55, 1.6]} position={[0, 0.05, 0]}>
-            <meshStandardMaterial color="#111" roughness={0.1} />
-         </Box>
+      const positions = particles.current.geometry.attributes.position.array as Float32Array;
+      for (let i = 0; i < positions.length; i += 3) {
+        positions[i + 1] += Math.sin(state.clock.elapsedTime + positions[i]) * 0.001;
+      }
+      particles.current.geometry.attributes.position.needsUpdate = true;
+    }
+  });
+
+  const geometry = new THREE.BufferGeometry();
+  const positions = new Float32Array(particleCount * 3);
+  const colors = new Float32Array(particleCount * 3);
+
+  for (let i = 0; i < particleCount * 3; i += 3) {
+    positions[i] = (Math.random() - 0.5) * 200;
+    positions[i + 1] = (Math.random() - 0.5) * 200;
+    positions[i + 2] = (Math.random() - 0.5) * 200;
+    
+    colors[i] = Math.random() * 0.5 + 0.5;
+    colors[i + 1] = Math.random() * 0.5 + 0.5;
+    colors[i + 2] = 1;
+  }
+
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+  return (
+    <points ref={particles} geometry={geometry}>
+      <pointsMaterial 
+        size={0.2} 
+        vertexColors
+        sizeAttenuation 
+        transparent 
+        opacity={0.6}
+        blending={THREE.AdditiveBlending}
+      />
+    </points>
+  );
+}
+
+function AnimatedOrbital({ section, onClick, isActive, orbit }: {
+  section: Section;
+  onClick: (currentPos: THREE.Vector3) => void;
+  isActive: boolean;
+  orbit?: { radius: number; speed: number; phase: number; y?: number };
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const glowRef = useRef<THREE.Mesh>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
+  const [hovered, setHovered] = useState(false);
+  const pointLightRef = useRef<THREE.PointLight>(null);
+  const trailRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    // Orbit the group around the origin if orbit settings are provided
+    if (groupRef.current && orbit) {
+      const angle = state.clock.elapsedTime * orbit.speed + orbit.phase;
+      const y = orbit.y ?? section.position[1] ?? 0;
+      groupRef.current.position.set(
+        Math.cos(angle) * orbit.radius,
+        y,
+        Math.sin(angle) * orbit.radius
+      );
+    }
+
+    if (meshRef.current) {
+      meshRef.current.rotation.x += 0.01;
+      meshRef.current.rotation.y += 0.015;
+      meshRef.current.rotation.z += 0.008;
+
+      const scale = hovered || isActive ? 1.4 : 1;
+      const targetScale = new THREE.Vector3(scale, scale, scale);
+      meshRef.current.scale.lerp(targetScale, 0.15);
+
+      meshRef.current.position.y += Math.sin(state.clock.elapsedTime * 2) * 0.003;
+    }
+
+    if (glowRef.current) {
+      glowRef.current.rotation.y = state.clock.elapsedTime * 0.5;
+      glowRef.current.rotation.z = state.clock.elapsedTime * 0.3;
+      glowRef.current.scale.x = 1 + Math.sin(state.clock.elapsedTime * 3) * 0.2;
+      glowRef.current.scale.y = 1 + Math.cos(state.clock.elapsedTime * 2.5) * 0.2;
+    }
+
+    if (ringRef.current) {
+      ringRef.current.rotation.y += 0.02;
+      // Keep the ring's x rotation tilted, but allow for a slight wobble
+      ringRef.current.rotation.x = (Math.PI * 0.4) + (Math.sin(state.clock.elapsedTime) * 0.1);
+    }
+
+    if (pointLightRef.current) {
+      pointLightRef.current.intensity = isActive ? 6 : (hovered ? 4 : 2);
+      pointLightRef.current.distance = isActive ? 25 : 20;
+    }
+
+    if (trailRef.current) {
+      trailRef.current.rotation.x += 0.005;
+      trailRef.current.rotation.y += 0.01;
+    }
+  });
+
+  return (
+    <Float speed={2} rotationIntensity={0.5} floatIntensity={1}>
+      <group ref={groupRef} position={section.position}>
+        {/* Flat, tilted ring */}
+        <mesh ref={ringRef} rotation-x={Math.PI * 0.4}>
+          <ringGeometry args={[3.2, 3.8, 64]} />
+          <meshBasicMaterial
+            color={section.color}
+            transparent
+            opacity={isActive ? 0.6 : 0.2}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        {/* Inner trail ring */}
+        <mesh ref={trailRef}>
+          <torusGeometry args={[2.8, 0.1, 16, 100]} />
+          <meshBasicMaterial
+            color={section.color}
+            transparent
+            opacity={0.4}
+            wireframe
+          />
+        </mesh>
+
+        {/* Main orbital sphere */}
+        <Trail
+          width={2}
+          length={8}
+          color={section.color}
+          attenuation={(t) => t * t}
+        >
+          <mesh
+            ref={meshRef}
+            onClick={() => onClick(groupRef.current ? groupRef.current.position.clone() : new THREE.Vector3(...section.position))}
+            onPointerOver={() => setHovered(true)}
+            onPointerOut={() => setHovered(false)}
+          >
+            <icosahedronGeometry args={[2, 4]} />
+            <MeshDistortMaterial
+              color={section.color}
+              emissive={section.color}
+              emissiveIntensity={isActive ? 1.5 : (hovered ? 1 : 0.6)}
+              roughness={0.1}
+              metalness={0.9}
+              distort={hovered || isActive ? 0.6 : 0.4}
+              speed={3}
+            />
+          </mesh>
+        </Trail>
+
+        {/* Glowing Atmosphere */}
+        <mesh ref={glowRef}>
+          <icosahedronGeometry args={[2.5, 4]} />
+          <shaderMaterial
+            vertexShader={vertexShader}
+            fragmentShader={fragmentShader}
+            uniforms={{
+              glowColor: { value: new THREE.Color(section.color) }
+            }}
+            blending={THREE.AdditiveBlending}
+            transparent={true}
+            side={THREE.BackSide}
+          />
+        </mesh>
+
+        {/* Sparkles around the orb */}
+        <Sparkles
+          count={100}
+          scale={6}
+          size={2}
+          speed={0.4}
+          opacity={hovered || isActive ? 1 : 0.5}
+          color={section.color}
+        />
+
+        {/* Icon badge */}
+        <mesh position={[0, 0, 2.5]}>
+          <circleGeometry args={[1, 32]} />
+          <meshBasicMaterial 
+            color={section.color} 
+            transparent 
+            opacity={0.8}
+          />
+        </mesh>
+
+        {/* Floating text */}
+        <Text
+          position={[0, 4, 0]}
+          fontSize={0.7}
+          fontWeight="bold"
+          color="white"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.1}
+          outlineColor="#000000"
+          maxWidth={5}
+        >
+          {section.title}
+        </Text>
+
+        {/* Pulsing light */}
+        <pointLight
+          ref={pointLightRef}
+          position={[0, 0, 0]}
+          color={section.color}
+          distance={20}
+          castShadow
+        />
+
+        {/* Inner glowing sphere */}
+        <Sphere args={[2, 32, 32]} castShadow>
+          <meshStandardMaterial
+            color={section.color}
+            emissive={section.color}
+            emissiveIntensity={0.4}
+            metalness={0.8}
+            roughness={0.2}
+            transparent
+            opacity={0.9}
+          />
+        </Sphere>
+
+        {/* Discovery badge for active */}
+        {isActive && (
+          <mesh position={[0, 5, 0]}>
+            <ringGeometry args={[0.6, 0.9, 32]} />
+            <meshBasicMaterial color="#10b981" transparent opacity={0.9} />
+          </mesh>
+        )}
       </group>
+    </Float>
+  );
+}
 
-      {/* --- OPEN TRUNK (Hatchback) --- */}
-      {/* Pivoted at the top roof line */}
-      <group position={[0, 1.6, 1.1]} rotation={[-0.8, 0, 0]}> {/* Rotated UP */}
-         {/* The Glass/Metal Hatch */}
-         <Box args={[1.4, 0.1, 1.2]} position={[0, 0, 0.6]}>
-            <meshStandardMaterial color="#fff" />
-         </Box>
-         <Box args={[1.3, 0.05, 1]} position={[0, 0.05, 0.6]}>
-            <meshStandardMaterial color="#111" />
-         </Box>
-         {/* Struts holding it up */}
-         <Cylinder args={[0.02, 0.02, 1.2]} position={[-0.6, 0.5, 0.3]} rotation={[0.5, 0, 0]}>
-            <meshStandardMaterial color="#333" />
-         </Cylinder>
-         <Cylinder args={[0.02, 0.02, 1.2]} position={[0.6, 0.5, 0.3]} rotation={[0.5, 0, 0]}>
-            <meshStandardMaterial color="#333" />
-         </Cylinder>
-      </group>
+function GalaxyCenter({ section }: { section?: Section }) {
+  const shellRef = useRef<THREE.Mesh>(null);
+  useFrame((state) => {
+    if (shellRef.current) {
+      shellRef.current.rotation.y += 0.01;
+      shellRef.current.scale.x = 1 + Math.sin(state.clock.elapsedTime * 1.5) * 0.05;
+      shellRef.current.scale.y = 1 + Math.cos(state.clock.elapsedTime * 1.2) * 0.05;
+    }
+  });
 
-      {/* Trunk Interior (Visible now) */}
-      <Box args={[1.4, 0.4, 1]} position={[0, 0.7, 1.5]}>
-         <meshStandardMaterial color="#222" />
-      </Box>
+  const title = section ? section.title : 'Sean Ogta Goh';
+  const color = section ? section.color : '#fbbf24'; 
+  const emissive = section ? section.color : '#d97706';
 
-      {/* Pop-up Headlights (Closed) */}
-      <Box args={[0.4, 0.05, 0.3]} position={[-0.5, 0.91, -1.8]}>
-         <meshStandardMaterial color="#111" />
-      </Box>
-      <Box args={[0.4, 0.05, 0.3]} position={[0.5, 0.91, -1.8]}>
-         <meshStandardMaterial color="#111" />
-      </Box>
-
-      {/* Tail Lights */}
-      <group position={[0, 0.7, 2.1]}>
-         <Box args={[1.6, 0.25, 0.1]}><meshStandardMaterial color="#111" /></Box>
-         <Box args={[0.4, 0.15, 0.12]} position={[-0.5, 0, 0]}><meshStandardMaterial color="#aa0000" /></Box>
-         <Box args={[0.4, 0.15, 0.12]} position={[0.5, 0, 0]}><meshStandardMaterial color="#aa0000" /></Box>
-         <Box args={[0.3, 0.15, 0.12]} position={[0, 0, 0]}><meshStandardMaterial color="#ffaa00" /></Box> {/* Turn signal */}
-         {/* License Plate */}
-         <Box args={[0.4, 0.15, 0.12]} position={[0, -0.2, 0]}>
-            <meshStandardMaterial color="#fff" />
-         </Box>
-      </group>
-
-      {/* Wheels */}
-      <Wheel position={[-0.75, 0.35, 1.3]} rimColor="#333" />
-      <Wheel position={[0.75, 0.35, 1.3]} rimColor="#333" />
-      <Wheel position={[-0.75, 0.35, -1.3]} rimColor="#333" />
-      <Wheel position={[0.75, 0.35, -1.3]} rimColor="#333" />
-
-      {/* Side Decal Text */}
-      <Text 
-        position={[0.92, 0.65, 0.5]} 
-        rotation={[0, Math.PI / 2, 0]} 
-        fontSize={0.12} 
-        color="#111"
+  return (
+    <group position={[0, 1.5, 0]}>
+      <Sphere args={[3.5, 64, 64]} castShadow>
+        <meshStandardMaterial
+          color={color}
+          emissive={emissive}
+          emissiveIntensity={2} 
+          metalness={0.6}
+          roughness={0.3}
+          transparent
+          opacity={0.95}
+        />
+      </Sphere>
+      <mesh ref={shellRef}>
+        <icosahedronGeometry args={[4.2, 2]} />
+        <meshBasicMaterial color={emissive} transparent opacity={0.2} wireframe />
+      </mesh>
+      <Sparkles count={300} scale={12} size={2} speed={0.3} opacity={0.6} color={emissive} />
+      <Text
+        position={[0, 6, 0]}
+        fontSize={1}
+        fontWeight="bold"
+        color="white"
         anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.12}
+        outlineColor="#000000"
       >
-        藤原とうふ店 (自家用)
+        {title}
       </Text>
     </group>
   );
 }
 
-function Subaru({ position, rotation }: any) {
-  return (
-    <group position={position} rotation={rotation}>
-      <RoundedBox args={[1.8, 0.65, 4.3]} radius={0.05} position={[0, 0.6, 0]}>
-        <meshStandardMaterial color="#0044aa" metalness={0.6} roughness={0.2} />
-      </RoundedBox>
-      <group position={[0, 1.3, -0.3]}>
-         <RoundedBox args={[1.6, 0.7, 2.4]} radius={0.15}>
-            <meshStandardMaterial color="#0044aa" metalness={0.6} roughness={0.2} />
-         </RoundedBox>
-         <Box args={[1.62, 0.55, 2.2]} position={[0, 0, 0]}>
-            <meshStandardMaterial color="#111" roughness={0.1} />
-         </Box>
-      </group>
-      <Box args={[0.6, 0.1, 0.6]} position={[0, 0.95, 1.2]}>
-         <meshStandardMaterial color="#0044aa" />
-      </Box>
-      <group position={[0, 1.1, -2]}>
-         <Box args={[1.8, 0.1, 0.4]}>
-            <meshStandardMaterial color="#0044aa" />
-         </Box>
-         <Box args={[0.1, 0.4, 0.3]} position={[-0.6, -0.2, 0]}>
-            <meshStandardMaterial color="#0044aa" />
-         </Box>
-         <Box args={[0.1, 0.4, 0.3]} position={[0.6, -0.2, 0]}>
-            <meshStandardMaterial color="#0044aa" />
-         </Box>
-      </group>
-      <group>
-        <Wheel position={[-0.75, 0.35, 1.3]} rimColor="#daa520" />
-        <Wheel position={[0.75, 0.35, 1.3]} rimColor="#daa520" />
-        <Wheel position={[-0.75, 0.35, -1.3]} rimColor="#daa520" />
-        <Wheel position={[0.75, 0.35, -1.3]} rimColor="#daa520" />
-      </group>
-    </group>
-  );
-}
-
-// --- CHARACTER: BUNTA ---
-function Bunta({ position, rotation }: any) {
-  return (
-    <group position={position} rotation={rotation}>
-      {/* Head */}
-      <Sphere args={[0.2, 16, 16]} position={[0, 1.6, 0]}>
-        <meshStandardMaterial color="#e0ac69" />
-      </Sphere>
-      {/* Hair (Flat top/Spiky) */}
-      <Cylinder args={[0.22, 0.2, 0.1]} position={[0, 1.75, 0]}>
-         <meshStandardMaterial color="#222" />
-      </Cylinder>
-
-      {/* Body (Grey Shirt) */}
-      <RoundedBox args={[0.5, 0.7, 0.25]} radius={0.05} position={[0, 1, 0]}>
-        <meshStandardMaterial color="#777" /> {/* Grey Shirt */}
-      </RoundedBox>
-
-      {/* Apron (Dark Blue/Black) */}
-      <Box args={[0.52, 0.9, 0.05]} position={[0, 0.7, 0.13]}>
-         <meshStandardMaterial color="#1a1a2e" />
-      </Box>
-      {/* Apron String/Neck */}
-      <Cylinder args={[0.15, 0.25, 0.4]} position={[0, 1.4, 0.1]} rotation={[0.2, 0, 0]}>
-         <meshStandardMaterial color="#1a1a2e" />
-      </Cylinder>
-
-      {/* Arms holding Tofu Tray */}
-      <group position={[0, 1, 0.2]}>
-         {/* Left Arm */}
-         <RoundedBox args={[0.12, 0.4, 0.12]} position={[-0.25, 0, 0.2]} rotation={[1.2, 0, -0.2]}>
-            <meshStandardMaterial color="#777" />
-         </RoundedBox>
-         {/* Right Arm */}
-         <RoundedBox args={[0.12, 0.4, 0.12]} position={[0.25, 0, 0.2]} rotation={[1.2, 0, 0.2]}>
-            <meshStandardMaterial color="#777" />
-         </RoundedBox>
-         
-         {/* The Tofu Tray */}
-         <Box args={[0.7, 0.15, 0.5]} position={[0, 0, 0.5]}>
-            <meshStandardMaterial color="#8b4513" /> {/* Wood Tray */}
-         </Box>
-         {/* Tofu Blocks inside */}
-         <Box args={[0.6, 0.1, 0.4]} position={[0, 0.1, 0.5]}>
-            <meshStandardMaterial color="#fff" />
-         </Box>
-      </group>
-
-      {/* Legs (Dark Pants) */}
-      <group position={[0, 0.35, 0]}>
-         <RoundedBox args={[0.18, 0.75, 0.18]} position={[-0.15, 0, 0]}>
-            <meshStandardMaterial color="#111" />
-         </RoundedBox>
-         <RoundedBox args={[0.18, 0.75, 0.18]} position={[0.15, 0, 0]}>
-            <meshStandardMaterial color="#111" />
-         </RoundedBox>
-      </group>
-      
-      {/* Boots */}
-      <Box args={[0.2, 0.15, 0.3]} position={[-0.15, -0.05, 0.05]}>
-         <meshStandardMaterial color="#fff" />
-      </Box>
-      <Box args={[0.2, 0.15, 0.3]} position={[0.15, -0.05, 0.05]}>
-         <meshStandardMaterial color="#fff" />
-      </Box>
-    </group>
-  );
-}
-
-// --- ENVIRONMENT OBJECTS ---
-
-function Asphalt() {
-  return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
-      <planeGeometry args={[60, 60]} />
-      <meshStandardMaterial color="#333" roughness={0.9} />
-    </mesh>
-  );
-}
-
-function UtilityPole({ activeId, onSectionSelect }: { activeId: string | null, onSectionSelect: (id: string, pos: THREE.Vector3) => void }) {
-  const groupRef = useRef<THREE.Group>(null);
-
-  return (
-    <group ref={groupRef} position={[-6, 0, 4]} rotation={[0, 0.5, 0]}>
-      <Cylinder args={[0.2, 0.25, 12, 16]} position={[0, 6, 0]}>
-        <meshStandardMaterial color="#777" roughness={0.9} />
-      </Cylinder>
-      
-      {/* Street Light */}
-      <group position={[0, 10, 0]} rotation={[0, -1.5, 0]}>
-        <Box args={[3, 0.15, 0.15]} position={[1.5, 0, 0]}>
-           <meshStandardMaterial color="#666" />
-        </Box>
-        <pointLight position={[3, -0.5, 0]} color="#aaddff" intensity={3} distance={20} />
-      </group>
-
-      {/* Signs */}
-      {sections.map((section, idx) => {
-        const yPos = 8 - idx * 1.1;
-        return (
-          <group 
-            key={section.id} 
-            position={[0.25, yPos, 0]} 
-            onClick={(e) => {
-              e.stopPropagation();
-              const worldPos = new THREE.Vector3(0, yPos, 0).applyMatrix4(groupRef.current!.matrixWorld);
-              onSectionSelect(section.id, worldPos);
-            }}
-            onPointerOver={() => document.body.style.cursor = 'pointer'}
-            onPointerOut={() => document.body.style.cursor = 'auto'}
-          >
-            <Box args={[0.1, 0.8, 2.5]} position={[0.1, 0, 1.2]}>
-               <meshStandardMaterial color="#fff" />
-            </Box>
-            <Box args={[0.11, 0.7, 2.4]} position={[0.1, 0, 1.2]}>
-               <meshStandardMaterial color={section.color} />
-            </Box>
-            <Text
-              position={[0.16, 0, 1.2]}
-              rotation={[0, Math.PI / 2, 0]}
-              fontSize={0.25}
-              color="#fff"
-              anchorX="center"
-              anchorY="middle"
-              fontWeight="bold"
-            >
-              {section.title}
-            </Text>
-          </group>
-        );
-      })}
-    </group>
-  );
-}
-
-function TofuShop() {
-  return (
-    <group position={[3, 0, -3]} rotation={[0, -0.2, 0]}>
-      {/* Main Building Block */}
-      <Box args={[9, 8, 7]} position={[0, 4, -1.5]}>
-        <meshStandardMaterial color="#ccc" /> {/* Beige/Grey Wall */}
-      </Box>
-
-      {/* --- SHOP FRONT --- */}
-      
-      {/* 1. Metal Shutter Housing (Top Box) */}
-      <Box args={[3.2, 0.6, 0.4]} position={[-1.5, 3.2, 2.1]}>
-         <meshStandardMaterial color="#778899" metalness={0.4} /> {/* Blue-ish Grey Metal */}
-      </Box>
-
-      {/* 2. Sliding Door (Open) */}
-      <group position={[-1.5, 1.5, 2]}>
-         {/* Interior Void */}
-         <Box args={[3, 3, 0.1]} position={[0, 0, -0.1]}>
-            <meshBasicMaterial color="#000" />
-         </Box>
-         {/* Door Frame */}
-         <Box args={[0.1, 3, 0.1]} position={[-1.5, 0, 0]}><meshStandardMaterial color="#8b4513" /></Box>
-         <Box args={[0.1, 3, 0.1]} position={[1.5, 0, 0]}><meshStandardMaterial color="#8b4513" /></Box>
-         <Box args={[3, 0.1, 0.1]} position={[0, 1.5, 0]}><meshStandardMaterial color="#8b4513" /></Box>
-         
-         {/* The Sliding Door (Pushed to the right) */}
-         <group position={[0.8, 0, 0]}>
-            <Box args={[1.4, 2.9, 0.05]} position={[0, 0, 0]}>
-               <meshStandardMaterial color="#d4c4a8" /> {/* Paper/Wood */}
-            </Box>
-            <Box args={[1.4, 2.9, 0.06]} wireframe>
-               <meshBasicMaterial color="#3e2723" />
-            </Box>
-         </group>
-      </group>
-
-      {/* 3. The Awning (Canvas Roof) */}
-      <group position={[-1.5, 4, 3.2]} rotation={[0.2, 0, 0]}>
-         {/* Main Sheet */}
-         <Box args={[3.5, 0.1, 2.5]}>
-            <meshStandardMaterial color="#f0f0f0" /> {/* White/Dirty White */}
-         </Box>
-         {/* Front Flap (Valence) */}
-         <Box args={[3.5, 0.5, 0.1]} position={[0, -0.25, 1.25]} rotation={[-0.2, 0, 0]}>
-            <meshStandardMaterial color="#f0f0f0" />
-         </Box>
-         
-         {/* Text: Top Line */}
-         <Text 
-            position={[0, 0.06, 0.5]} 
-            rotation={[-Math.PI/2, 0, 0]} 
-            fontSize={0.2} 
-            color="#222"
-            font="https://fonts.gstatic.com/s/notosansjp/v52/-F6jfjtqLzI2JPCgQBnw7HFQggM.woff"
-         >
-            手づくりの店   とうふ 油あげ
-         </Text>
-
-         {/* Text: Front Main Line */}
-         <Text 
-            position={[0, -0.25, 1.31]} 
-            fontSize={0.35} 
-            color="#222"
-            font="https://fonts.gstatic.com/s/notosansjp/v52/-F6jfjtqLzI2JPCgQBnw7HFQggM.woff"
-            fontWeight="bold"
-         >
-            藤原 豆腐 店
-         </Text>
-      </group>
-
-      {/* 4. Details */}
-      {/* Drain Pipe (Left) */}
-      <Cylinder args={[0.1, 0.1, 8]} position={[-4.2, 4, 2.2]}>
-         <meshStandardMaterial color="#888" />
-      </Cylinder>
-      {/* AC Unit (Right Wall) */}
-      <group position={[3, 3, 2.2]}>
-         <Box args={[1.2, 1.2, 0.5]}><meshStandardMaterial color="#ddd" /></Box>
-         <Cylinder args={[0.4, 0.4, 0.6, 16]} rotation={[Math.PI/2, 0, 0]}>
-            <meshStandardMaterial color="#333" />
-         </Cylinder>
-      </group>
-
-      {/* Side Fence/Neighbor */}
-      <Box args={[0.2, 3, 6]} position={[4.5, 1.5, 1]}>
-         <meshStandardMaterial color="#5c4033" />
-      </Box>
-
-    </group>
-  );
-}
-
-function Wires() {
+function SolarSystemView({ activeSection, planets, onPlanetClick }: { activeSection: Section, planets: Planet[], onPlanetClick: (planet: Planet) => void }) {
   return (
     <group>
-       <Cable start={[-6, 11, 4]} end={[3, 7, -1]} v1={[-2, 9, 2]} v2={[1, 8, 0]} color="#222" />
-       <Cable start={[-6, 10.5, 4]} end={[3, 6.5, -1]} v1={[-2, 8.5, 2]} v2={[1, 7.5, 0]} color="#222" />
+      {/* Render the central star */}
+      <GalaxyCenter section={activeSection} />
+
+      {/* Render the orbiting planets */}
+      {planets.map((planet, idx) => (
+        <AnimatedOrbital
+          key={planet.id}
+          section={{ 
+            id: planet.id,
+            title: planet.title,
+            position: [0, 0, 0],
+            color: planet.color,
+            darkColor: planet.darkColor,
+            icon: Zap, 
+            content: {
+              heading: '',
+              description: '',
+              planets: []
+            }
+          }}
+          onClick={() => onPlanetClick(planet)}
+          isActive={false}
+          orbit={{
+            radius: 8 + idx * 3.5, 
+            speed: 0.3 - idx * 0.04, 
+            phase: idx * ((Math.PI * 2) / planets.length),
+            y: 0
+          }}
+        />
+      ))}
     </group>
   );
 }
 
-function CameraRig({ targetPosition }: { targetPosition: THREE.Vector3 | null }) {
-  const { camera, controls } = useThree<any>();
-  
-  useFrame((state, delta) => {
-    // Default Angle: Looking at shop from street level, slightly left
-    const defaultPos = new THREE.Vector3(-6, 2, 10); 
-    const focusPos = targetPosition ? new THREE.Vector3(targetPosition.x - 3, targetPosition.y + 1, 8) : defaultPos;
-    
-    state.camera.position.lerp(focusPos, 2 * delta);
-    
-    const defaultTarget = new THREE.Vector3(1, 1.5, 0); // Target center of shop door
-    const focusTarget = targetPosition ? new THREE.Vector3(targetPosition.x, targetPosition.y, 0) : defaultTarget;
-    
-    if (controls) {
-      controls.target.lerp(focusTarget, 2 * delta);
-      controls.update();
-    }
-  });
+function Scene3D({
+  activeSection,
+  onSectionClick,
+  view,
+  planets,
+  onPlanetClick
+}: {
+  activeSection: Section | null;
+  onSectionClick: (section: Section, currentPos: THREE.Vector3) => void;
+  view: 'galaxy' | 'solarSystem';
+  planets: Planet[];
+  onPlanetClick: (planet: Planet) => void;
+}) {
+  return (
+    <>
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[15, 15, 5]} intensity={1.5} castShadow />
+      <directionalLight position={[-15, 10, -5]} intensity={0.8} color="#60a5fa" />
+      <pointLight position={[0, 20, 0]} intensity={1.2} color="#a78bfa" distance={150} />
+      <spotLight
+        position={[0, 30, 0]}
+        angle={0.6}
+        penumbra={0.5}
+        intensity={1.5}
+        color="#ffffff"
+        castShadow
+      />
 
-  return null;
+      <ParticleField />
+
+      {view === 'galaxy' ? (
+        <GalaxyCenter />
+      ) : (
+        <SolarSystemView activeSection={activeSection!} planets={planets} onPlanetClick={onPlanetClick} />
+      )}
+
+      {view === 'galaxy' && sections.map((section, idx) => (
+        <AnimatedOrbital
+          key={section.id}
+          section={section}
+          onClick={(pos) => onSectionClick(section, pos)}
+          isActive={activeSection?.id === section.id}
+          orbit={{
+            radius: 10 + idx * 4,
+            speed: 0.2 + idx * 0.03,
+            phase: idx * ((Math.PI * 2) / sections.length),
+            y: 2
+          }}
+        />
+      ))}
+
+      <Stars radius={250} depth={100} count={10000} factor={6} saturation={0.5} fade speed={1} />
+      <Environment preset="night" />
+    </>
+  );
 }
 
-export default function FujiwaraScene() {
-  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
-  const [cameraTarget, setCameraTarget] = useState<THREE.Vector3 | null>(null);
+export default function AnimatedPortfolio() {
+  const [activeSection, setActiveSection] = useState<Section | null>(null);
+  const [activePlanet, setActivePlanet] = useState<Planet | null>(null);
+  const [view, setView] = useState<'galaxy' | 'solarSystem'>('galaxy');
+  const [planets, setPlanets] = useState<Planet[]>([]);
+  const [showMenu, setShowMenu] = useState(false);
+  const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+  const controlsRef = useRef<any>(null);
 
-  const handleSectionSelect = (id: string, worldPos: THREE.Vector3) => {
-    if (activeSectionId === id) {
-      setActiveSectionId(null);
-      setCameraTarget(null);
-    } else {
-      setActiveSectionId(id);
-      setCameraTarget(worldPos);
+  const handleSectionClick = (section: Section, currentPos?: THREE.Vector3) => {
+    setActiveSection(section);
+    setActivePlanet(null); // Reset active planet
+    setShowMenu(false);
+    setView('solarSystem');
+    setPlanets(section.content.planets);
+
+    if (controlsRef.current) {
+      // If we have the current orbiting position, use it; otherwise estimate based on index
+      const idx = sections.findIndex((s) => s.id === section.id);
+      const radius = 10 + idx * 4;
+      const phase = idx * ((Math.PI * 2) / sections.length);
+      const y = 2;
+      const target = currentPos ?? new THREE.Vector3(Math.cos(phase) * radius, y, Math.sin(phase) * radius);
+
+      gsap.to(controlsRef.current.object.position, {
+        x: target.x * 0.7,
+        y: target.y + 8,
+        z: target.z + 15,
+        duration: 2,
+        ease: 'power2.inOut'
+      });
     }
   };
 
-  const activeSectionData = sections.find(s => s.id === activeSectionId);
+  const handlePlanetClick = (planet: Planet) => {
+    setActivePlanet(planet);
+  };
+
+  const resetView = () => {
+    setActiveSection(null);
+    setActivePlanet(null);
+    setView('galaxy');
+    setPlanets([]);
+    if (controlsRef.current) {
+      gsap.to(controlsRef.current.object.position, {
+        x: 0,
+        y: 10,
+        z: 30,
+        duration: 2,
+        ease: 'power2.inOut'
+      });
+    }
+  };
 
   return (
-    <div className="relative w-full h-screen bg-[#222] overflow-hidden font-sans">
-      {/* UI Overlay */}
-      {activeSectionData && (
-        <div className="absolute top-1/2 right-4 md:right-20 -translate-y-1/2 z-10 max-w-sm md:max-w-md w-full animate-fade-in pointer-events-none">
-          <div 
-            className="bg-black/80 backdrop-blur-xl border-l-4 p-8 shadow-[0_0_50px_rgba(0,0,0,0.8)] pointer-events-auto transition-all" 
-            style={{ borderColor: activeSectionData.color }}
+    <div className="relative w-full h-screen bg-slate-950 overflow-hidden">
+      <div className="absolute top-0 left-0 right-0 z-40 bg-gradient-to-b from-slate-950/95 via-slate-950/80 to-transparent backdrop-blur-sm border-b border-slate-800/50">
+        <div className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-between">
+          <button
+            onClick={resetView}
+            className="text-white hover:text-cyan-400 transition-all duration-300 font-black text-xl tracking-tight flex items-center space-x-2 group"
           >
-            <h2 className="text-3xl md:text-5xl font-black mb-4 text-white tracking-tighter" style={{ textShadow: `0 0 20px ${activeSectionData.color}` }}>
-              {activeSectionData.title}
-            </h2>
-            <div className="text-gray-300 text-lg leading-relaxed font-light border-t border-gray-800 pt-4">
-              {activeSectionData.id === 'engineering' && (
-                <ul className="space-y-2 list-disc pl-4 marker:text-cyan-500">
-                  <li>RailTech Grand Challenge <strong>Champion</strong> (2024)</li>
-                  <li>Designed <strong>LoRaWAN</strong> Tunnel Safety Tracker</li>
-                  <li>Project Management Intern at <strong>Siemens AG</strong></li>
-                  <li>Published researcher (ICCAR, IEEE SOLI)</li>
-                </ul>
-              )}
-              {activeSectionData.id === 'music' && (
-                <ul className="space-y-2 list-disc pl-4 marker:text-pink-500">
-                  <li><strong>ABRSM Grade 8</strong> Music Theory</li>
-                  <li>Trained Classical Violinist</li>
-                  <li>Vocal performance & Audio Engineering</li>
-                </ul>
-              )}
-              {activeSectionData.id === 'achievements' && (
-                <ul className="space-y-2 list-disc pl-4 marker:text-purple-500">
-                  <li><strong>Lean Six Sigma</strong> Green Belt</li>
-                  <li>Best Presenter Award (IEEE SOLI)</li>
-                  <li>SAF Ammunition Reliability Officer</li>
-                </ul>
-              )}
-              {!['engineering', 'music', 'achievements'].includes(activeSectionData.id) && (
-                <p>{activeSectionData.description} - Details coming soon.</p>
+            <SparklesIcon className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+            <span>Home</span> 
+          </button>
+
+          {view === 'solarSystem' && (
+            <button
+              onClick={resetView}
+              className="text-white hover:text-cyan-400 transition-all p-2 hover:bg-slate-800/50 rounded-lg flex items-center space-x-2"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span>Back to Galaxy</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="text-white hover:text-cyan-400 transition-all p-2 hover:bg-slate-800/50 rounded-lg"
+          >
+            {showMenu ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
+      </div>
+
+      {showMenu && (
+        <div className="absolute top-20 right-4 z-40 bg-slate-900/98 backdrop-blur-xl rounded-3xl p-6 border border-slate-700/50 shadow-2xl max-w-sm w-full">
+          <h3 className="text-white font-black text-lg mb-6 flex items-center space-x-2">
+            <Zap className="w-5 h-5 text-cyan-400" />
+            <span>Explore My Journey</span>
+          </h3>
+          <div className="space-y-2">
+            {sections.map((section) => (
+              <button
+                key={section.id}
+                onClick={() => handleSectionClick(section)}
+                className="flex items-center space-x-3 w-full text-left px-4 py-3 rounded-xl transition-all hover:bg-slate-800/80 group relative overflow-hidden"
+              >
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0 relative z-10"
+                  style={{ backgroundColor: section.color }}
+                >
+                  <section.icon className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-white group-hover:text-cyan-300 transition-colors font-semibold">
+                    {section.title}
+                  </p>
+                  <p className="text-xs text-slate-400 group-hover:text-slate-300">
+                    {section.content.description.substring(0, 40)}...
+                  </p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition-all group-hover:translate-x-1" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40">
+        <div className="text-center space-y-3">
+          <p className="text-white/70 text-sm bg-slate-900/80 backdrop-blur-md px-6 py-3 rounded-full border border-slate-700/50 font-medium">
+            🌌 Milky Way at center • Planets are sections • Click to explore
+          </p>
+        </div>
+      </div>
+
+      <Canvas
+        camera={{ position: [0, 10, 30], fov: 60 }}
+        gl={{ antialias: true, alpha: true }}
+      >
+        <Suspense fallback={null}>
+          <color attach="background" args={['#0a0a15']} />
+          <fog attach="fog" args={['#0a0a15', 25, 90]} />
+ 
+           <Scene3D 
+             activeSection={activeSection} 
+             onSectionClick={handleSectionClick} 
+             view={view} 
+             planets={planets} 
+             onPlanetClick={handlePlanetClick} 
+           />
+ 
+           <OrbitControls
+            ref={controlsRef}
+            enablePan={false}
+            enableZoom={true}
+            enableRotate={true}
+            maxDistance={60}
+            minDistance={12}
+            maxPolarAngle={Math.PI / 1.8}
+            minPolarAngle={Math.PI / 3}
+            autoRotate={!activeSection}
+            autoRotateSpeed={0.8}
+          />
+        </Suspense>
+      </Canvas>
+
+      {activePlanet && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md transition-opacity"
+          onClick={() => setActivePlanet(null)}
+        >
+          <div
+            className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 rounded-3xl p-8 md:p-12 max-w-2xl w-full border shadow-2xl transform transition-all animate-fade-in relative overflow-hidden"
+            style={{
+              borderColor: activePlanet.color,
+              borderWidth: '2px',
+              boxShadow: `0 0 80px ${activePlanet.color}60`
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setActivePlanet(null)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors bg-slate-700/50 p-3 rounded-xl hover:bg-slate-700 z-10"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <div className="relative z-10 text-left">
+              <h2 className="text-3xl font-black text-white mb-6 text-center">{activePlanet.title}</h2>
+              {/* Added whitespace-pre-line to respect newlines (\n) in the detail string */}
+              {activePlanet.detail ? (
+                <p className="text-lg text-slate-300 whitespace-pre-line">{activePlanet.detail}</p>
+              ) : (
+                <p className="text-lg text-slate-300 text-center">Detailed information about this achievement or skill would be displayed here.</p>
               )}
             </div>
           </div>
         </div>
       )}
-
-      {!activeSectionId && (
-        <div className="absolute bottom-12 w-full text-center z-10 pointer-events-none">
-          <p className="text-white/50 text-xs tracking-[0.3em] uppercase animate-pulse">
-            Scroll to rotate • Click signs on pole
-          </p>
-        </div>
-      )}
-
-      <Canvas shadows dpr={[1, 2]} camera={{ position: [-6, 2, 10], fov: 50 }}>
-        <Suspense fallback={null}>
-          {/* Environment - Cool Morning Light */}
-          <Environment preset="night" environmentIntensity={0.8} />
-          
-          <fog attach="fog" args={['#222', 15, 50]} />
-          <color attach="background" args={['#222']} />
-
-          <CameraRig targetPosition={cameraTarget} />
-          <OrbitControls 
-            makeDefault
-            enablePan={false} 
-            maxPolarAngle={Math.PI / 2 - 0.05}
-            minPolarAngle={Math.PI / 4}
-            minDistance={5}
-            maxDistance={25}
-          />
-
-          {/* Morning Sun (Directional Blue-ish) */}
-          <directionalLight 
-            position={[10, 10, 10]} 
-            intensity={1.5} 
-            color="#aaddff" 
-            castShadow 
-          />
-          <ambientLight intensity={0.5} color="#ccddff" />
-
-          {/* Scene Components */}
-          <UtilityPole activeId={activeSectionId} onSectionSelect={handleSectionSelect} />
-          <TofuShop />
-          <Bunta position={[1.5, 0.25, -1]} rotation={[0, -0.2, 0]} />
-          <Wires />
-          
-          {/* Cars - Angled for loading */}
-          <AE86 position={[1.5, 0, 1.5]} rotation={[0, -2.8, 0]} />
-          <Subaru position={[-5, 0, -2]} rotation={[0, 0.5, 0]} />
-
-          <Asphalt />
-
-          {/* Background Trees / Mountain base */}
-          <group position={[0, 0, -10]}>
-             <Box args={[30, 10, 5]} position={[0, 5, 0]}>
-                <meshStandardMaterial color="#112211" />
-             </Box>
-          </group>
-
-        </Suspense>
-      </Canvas>
     </div>
   );
 }
