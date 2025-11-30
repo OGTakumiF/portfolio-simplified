@@ -61,6 +61,57 @@ function Steam() {
   );
 }
 
+// --- CHARACTERS ---
+
+function Robot({ position, rotation = [0, 0, 0], scale = 1, color = "#22d3ee", headColor="#e5e5e5" }: any) {
+  return (
+    <group position={position} rotation={rotation} scale={scale}>
+        <Float speed={4} rotationIntensity={0.1} floatIntensity={0.2}>
+            {/* Head */}
+            <RoundedBox args={[0.5, 0.4, 0.45]} radius={0.1} position={[0, 1.6, 0]}>
+                <meshStandardMaterial color={headColor} roughness={0.3} />
+            </RoundedBox>
+            {/* Eyes (Visor) */}
+            <Box args={[0.45, 0.12, 0.2]} position={[0, 1.6, 0.15]}>
+                <meshBasicMaterial color={color} toneMapped={false} />
+            </Box>
+            {/* Antenna */}
+            <Cylinder args={[0.02, 0.02, 0.3]} position={[0.2, 1.9, 0]}>
+                <meshStandardMaterial color="#888" />
+            </Cylinder>
+            <Sphere args={[0.05]} position={[0.2, 2.05, 0]}>
+                 <meshBasicMaterial color="red" />
+            </Sphere>
+            
+            {/* Body */}
+            <RoundedBox args={[0.55, 0.7, 0.35]} radius={0.1} position={[0, 1, 0]}>
+                <meshStandardMaterial color="#333" />
+            </RoundedBox>
+            {/* Chest Light */}
+            <Box args={[0.2, 0.2, 0.1]} position={[0, 1.1, 0.18]}>
+                 <meshBasicMaterial color={color} opacity={0.5} transparent />
+            </Box>
+            
+            {/* Arms */}
+            <RoundedBox args={[0.15, 0.6, 0.15]} radius={0.05} position={[0.38, 1, 0]} rotation={[0, 0, -0.1]}>
+                <meshStandardMaterial color="#444" />
+            </RoundedBox>
+            <RoundedBox args={[0.15, 0.6, 0.15]} radius={0.05} position={[-0.38, 1, 0]} rotation={[0, 0, 0.1]}>
+                <meshStandardMaterial color="#444" />
+            </RoundedBox>
+
+            {/* Legs */}
+            <RoundedBox args={[0.18, 0.6, 0.18]} radius={0.05} position={[-0.18, 0.4, 0]}>
+                <meshStandardMaterial color="#222" />
+            </RoundedBox>
+            <RoundedBox args={[0.18, 0.6, 0.18]} radius={0.05} position={[0.18, 0.4, 0]}>
+                <meshStandardMaterial color="#222" />
+            </RoundedBox>
+        </Float>
+    </group>
+  );
+}
+
 // --- SCENE OBJECTS ---
 
 function NeonFloor() {
@@ -72,11 +123,11 @@ function NeonFloor() {
         resolution={1024}
         mixBlur={1}
         mixStrength={80}
-        roughness={0.5} // Increased roughness to catch more light
+        roughness={0.5} 
         depthScale={1.2}
         minDepthThreshold={0.4}
         maxDepthThreshold={1.4}
-        color="#101015" // Slightly lighter base color
+        color="#101015"
         metalness={0.8}
         mirror={0.7}
       />
@@ -97,7 +148,7 @@ function SignPost({ activeId, onSectionSelect }: { activeId: string | null, onSe
         <meshStandardMaterial color="#555" />
       </Box>
 
-      {/* Top Light Fixture - BRIGHTER */}
+      {/* Top Light Fixture */}
       <group position={[0, 9.8, 0]}>
         <Box args={[0.4, 0.5, 0.4]}>
            <meshStandardMaterial color="#222" />
@@ -136,9 +187,9 @@ function SignPost({ activeId, onSectionSelect }: { activeId: string | null, onSe
 
               <RoundedBox args={[2.2, 0.7, 0.15]} radius={0.05} smoothness={4}>
                 <meshStandardMaterial 
-                  color="#1a1a1a" // Lighter black
+                  color="#1a1a1a"
                   emissive={section.color}
-                  emissiveIntensity={isActive ? 0.6 : 0.2} // Increased glow
+                  emissiveIntensity={isActive ? 0.6 : 0.2}
                   roughness={0.2}
                 />
               </RoundedBox>
@@ -170,11 +221,11 @@ function SignPost({ activeId, onSectionSelect }: { activeId: string | null, onSe
 function RamenStall() {
   return (
     <group position={[2.5, 0, -2]} rotation={[0, -0.5, 0]}>
-      {/* Base Platform - Lighter Grey */}
+      {/* Base Platform */}
       <Box args={[7, 0.5, 5]} position={[0, 0.25, 0]}>
         <meshStandardMaterial color="#333" />
       </Box>
-      {/* Main Container - Lighter Grey */}
+      {/* Main Container */}
       <Box args={[6, 4.5, 3.5]} position={[0, 2.5, -0.5]}>
         <meshStandardMaterial color="#444455" />
       </Box>
@@ -199,7 +250,7 @@ function RamenStall() {
          </Cylinder>
       </group>
 
-      {/* Main Sign Board - BRIGHTER GLOW */}
+      {/* Main Sign Board */}
       <group position={[0, 5.5, 1]}>
         <Box args={[5, 1.2, 0.2]}>
            <meshStandardMaterial color="#111" />
@@ -223,10 +274,10 @@ function RamenStall() {
 
       {/* Counter */}
       <Box args={[5.8, 1.1, 0.8]} position={[0, 0.8, 1.5]}>
-        <meshStandardMaterial color="#6d4c35" /> {/* Lighter Wood */}
+        <meshStandardMaterial color="#6d4c35" />
       </Box>
       <Box args={[6, 0.1, 1]} position={[0, 1.4, 1.5]}>
-        <meshStandardMaterial color="#a07040" /> {/* Lighter Wood */}
+        <meshStandardMaterial color="#a07040" />
       </Box>
 
       {/* Noren */}
@@ -242,7 +293,7 @@ function RamenStall() {
          ))}
       </group>
 
-      {/* Lanterns - BRIGHTER */}
+      {/* Lanterns */}
       <group position={[0, 3, 2]}>
          {[-2.2, 2.2].map((x, i) => (
             <group key={i} position={[x, 0, 0]}>
@@ -256,7 +307,6 @@ function RamenStall() {
 
       {/* Bowls & Interior Light */}
       <group position={[0, 1.5, 1.5]}>
-         {/* Warm Interior Fill Light */}
          <pointLight position={[0, 1, -1]} intensity={2} color="#fbbf24" distance={5} /> 
          <group position={[-1, 0, 0]}>
             <Cylinder args={[0.2, 0.15, 0.2]}><meshStandardMaterial color="#222" /></Cylinder>
@@ -314,6 +364,15 @@ function RamenStall() {
             {"Ramen.....$12\nGyoza.....$6\nSake......$8"}
          </Text>
       </group>
+
+      {/* --- ROBOTS (CHARACTERS) --- */}
+      {/* 1. The Chef (Inside) */}
+      <Robot position={[0, 1.2, 0.5]} scale={0.9} color="#d946ef" /> 
+      {/* 2. The Customer (On Stool) */}
+      <Robot position={[-1.5, 1.1, 2.5]} rotation={[0, 0.5, 0]} scale={0.9} color="#fbbf24" />
+      {/* 3. The Observer (Near Signpost) */}
+      <Robot position={[-3, 0.5, 3]} rotation={[0, -0.8, 0]} scale={1} color="#22d3ee" />
+
     </group>
   );
 }
@@ -418,10 +477,9 @@ export default function CyberpunkScene() {
 
       <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 3, 14], fov: 45 }}>
         <Suspense fallback={null}>
-          {/* Environment Lighting: This fills the dark shadows with 'City' ambient light */}
+          {/* Environment Lighting */}
           <Environment preset="city" environmentIntensity={0.5} />
           
-          {/* Lighter Fog */}
           <fog attach="fog" args={['#0b0b15', 12, 50]} />
           <color attach="background" args={['#0b0b15']} />
 
