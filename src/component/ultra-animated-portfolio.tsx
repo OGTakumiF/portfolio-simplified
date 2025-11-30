@@ -215,65 +215,44 @@ const sections: Section[] = [
 
 function ParticleField() {
   const particles = useRef<THREE.Points>(null);
-  const particleCount = 3000;
-
+  
   useFrame((state) => {
     if (particles.current) {
       particles.current.rotation.x = state.clock.elapsedTime * 0.0001;
       particles.current.rotation.y = state.clock.elapsedTime * 0.0002;
-      
-      const positions = particles.current.geometry.attributes.position.array as Float32Array;
-      for (let i = 0; i < positions.length; i += 3) {
-        positions[i + 1] += Math.sin(state.clock.elapsedTime + positions[i]) * 0.001;
-      }
-      particles.current.geometry.attributes.position.needsUpdate = true;
     }
   });
 
-  const geometry = new THREE.BufferGeometry();
-  const positions = new Float32Array(particleCount * 3);
-  const colors = new Float32Array(particleCount * 3);
+  const geometry = useMemo(() => {
+    const geo = new THREE.BufferGeometry();
+    const count = 3000;
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
 
-  for (let i = 0; i < particleCount * 3; i += 3) {
-    positions[i] = (Math.random() - 0.5) * 200;
-    positions[i + 1] = (Math.random() - 0.5) * 200;
-    positions[i + 2] = (Math.random() - 0.5) * 200;
-    
-    colors[i] = Math.random() * 0.5 + 0.5;
-    colors[i + 1] = Math.random() * 0.5 + 0.5;
-    colors[i + 2] = 1;
-  }
-
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    for (let i = 0; i < count * 3; i += 3) {
+      positions[i] = (Math.random() - 0.5) * 400;
+      positions[i + 1] = (Math.random() - 0.5) * 400;
+      positions[i + 2] = (Math.random() - 0.5) * 400;
+      colors[i] = 1; colors[i+1] = 1; colors[i+2] = 1;
+    }
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    return geo;
+  }, []);
 
   return (
     <points ref={particles} geometry={geometry}>
-      <pointsMaterial 
-        size={0.2} 
-        vertexColors
-        sizeAttenuation 
-        transparent 
-        opacity={0.6}
-        blending={THREE.AdditiveBlending}
-      />
+      <pointsMaterial size={0.3} vertexColors sizeAttenuation transparent opacity={0.4} blending={THREE.AdditiveBlending} />
     </points>
   );
 }
 
-// --- Background Image ---
 function BackgroundImage() {
   const texture = useLoader(THREE.TextureLoader, "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=2048&auto=format&fit=crop");
-  
   return (
     <mesh>
       <sphereGeometry args={[500, 64, 64]} />
-      <meshBasicMaterial 
-        map={texture} 
-        side={THREE.BackSide} 
-        transparent={true}
-        opacity={0.6} 
-      />
+      <meshBasicMaterial map={texture} side={THREE.BackSide} transparent={true} opacity={0.6} />
     </mesh>
   );
 }
@@ -318,30 +297,11 @@ function SpiralGalaxy({ color, radius = 2 }: { color: string, radius?: number })
     <group>
       <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            count={galaxyParameters.positions.length / 3}
-            array={galaxyParameters.positions}
-            itemSize={3}
-          />
-          <bufferAttribute
-            attach="attributes-color"
-            count={galaxyParameters.colors.length / 3}
-            array={galaxyParameters.colors}
-            itemSize={3}
-          />
+          <bufferAttribute attach="attributes-position" count={galaxyParameters.positions.length / 3} array={galaxyParameters.positions} itemSize={3} />
+          <bufferAttribute attach="attributes-color" count={galaxyParameters.colors.length / 3} array={galaxyParameters.colors} itemSize={3} />
         </bufferGeometry>
-        <pointsMaterial
-          size={0.15}
-          sizeAttenuation={true}
-          depthWrite={false}
-          vertexColors={true}
-          blending={THREE.AdditiveBlending}
-          transparent={true}
-          opacity={0.8}
-        />
+        <pointsMaterial size={0.15} sizeAttenuation={true} depthWrite={false} vertexColors={true} blending={THREE.AdditiveBlending} transparent={true} opacity={0.8} />
       </points>
-      
       <mesh>
         <sphereGeometry args={[0.6, 16, 16]} />
         <meshBasicMaterial color={color} transparent opacity={0.8} blur={0.5} />
@@ -351,12 +311,7 @@ function SpiralGalaxy({ color, radius = 2 }: { color: string, radius?: number })
   );
 }
 
-function OrbitingSystem({ section, onClick, isActive, orbit }: {
-  section: Section;
-  onClick: (currentPos: THREE.Vector3) => void;
-  isActive: boolean;
-  orbit?: { radius: number; speed: number; phase: number; y?: number };
-}) {
+function OrbitingSystem({ section, onClick, isActive, orbit }: any) {
   const groupRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
   
@@ -364,52 +319,27 @@ function OrbitingSystem({ section, onClick, isActive, orbit }: {
     if (groupRef.current && orbit) {
       const angle = state.clock.elapsedTime * orbit.speed + orbit.phase;
       const y = orbit.y ?? section.position[1] ?? 0;
-      groupRef.current.position.set(
-        Math.cos(angle) * orbit.radius,
-        y,
-        Math.sin(angle) * orbit.radius
-      );
+      groupRef.current.position.set(Math.cos(angle) * orbit.radius, y, Math.sin(angle) * orbit.radius);
     }
   });
 
   return (
     <group ref={groupRef} position={section.position}>
-      {/* Invisible Sphere for easier clicking */}
       <mesh 
         visible={false} 
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick(groupRef.current ? groupRef.current.position.clone() : new THREE.Vector3(...section.position));
-        }}
-        onPointerOver={() => {
-          document.body.style.cursor = 'pointer';
-          setHovered(true);
-        }}
-        onPointerOut={() => {
-          document.body.style.cursor = 'auto';
-          setHovered(false);
-        }}
+        onClick={(e) => { e.stopPropagation(); onClick(groupRef.current ? groupRef.current.position.clone() : new THREE.Vector3(...section.position)); }}
+        onPointerOver={() => { document.body.style.cursor = 'pointer'; setHovered(true); }}
+        onPointerOut={() => { document.body.style.cursor = 'auto'; setHovered(false); }}
       >
         <sphereGeometry args={[3]} /> 
         <meshBasicMaterial color="red" />
       </mesh>
-
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[3.2, 3.3, 64]} />
         <meshBasicMaterial color={section.color} transparent opacity={0.1} side={THREE.DoubleSide} />
       </mesh>
-
       <SpiralGalaxy color={section.color} radius={hovered ? 3.5 : 3} />
-
-      <Text
-        position={[0, 3.5, 0]}
-        fontSize={hovered ? 1 : 0.8}
-        color="white"
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.05}
-        outlineColor="#000"
-      >
+      <Text position={[0, 3.5, 0]} fontSize={hovered ? 1 : 0.8} color="white" anchorX="center" anchorY="middle" outlineWidth={0.05} outlineColor="#000">
         {section.title}
       </Text>
     </group>
@@ -433,140 +363,77 @@ function CentralStar({ section }: { section?: Section }) {
     <group position={[0, 0, 0]}>
       <mesh>
         <sphereGeometry args={[4.5, 64, 64]} />
-        <MeshDistortMaterial
-          color={color}
-          emissive={emissive}
-          emissiveIntensity={3} 
-          roughness={0}
-          metalness={0.2}
-          distort={0.3} 
-          speed={2}
-        />
+        <MeshDistortMaterial color={color} emissive={emissive} emissiveIntensity={3} roughness={0} metalness={0.2} distort={0.3} speed={2} />
       </mesh>
-      
       <mesh ref={shellRef}>
         <icosahedronGeometry args={[5.2, 2]} />
         <meshBasicMaterial color={emissive} transparent opacity={0.1} wireframe />
       </mesh>
-
       <pointLight intensity={5} distance={50} color={color} />
-
-      <Text
-        position={[0, 6.5, 0]}
-        fontSize={1.5}
-        fontWeight="bold"
-        color="white"
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.1}
-        outlineColor="#000000"
-      >
+      <Text position={[0, 6.5, 0]} fontSize={1.5} fontWeight="bold" color="white" anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#000000">
         {title}
       </Text>
     </group>
   );
 }
 
-function SystemDetails({ activeSection, planets, onPlanetClick }: { activeSection: Section, planets: Planet[], onPlanetClick: (planet: Planet) => void }) {
+function SystemDetails({ activeSection, planets, onPlanetClick }: any) {
   return (
     <group>
       <CentralStar section={activeSection} />
-
-      {planets.map((planet, idx) => (
+      {planets.map((planet: any, idx: number) => (
         <OrbitingSystem
           key={planet.id}
-          section={{ 
-            id: planet.id,
-            title: planet.title,
-            position: [0, 0, 0],
-            color: planet.color,
-            darkColor: planet.darkColor,
-            icon: Zap, 
-            content: { heading: '', description: '', planets: [] }
-          }}
+          section={{ id: planet.id, title: planet.title, position: [0, 0, 0], color: planet.color, darkColor: planet.darkColor, icon: Zap, content: { heading: '', description: '', planets: [] } }}
           onClick={() => onPlanetClick(planet)}
           isActive={false}
-          orbit={{
-            radius: 9 + idx * 4, 
-            speed: 0.2 - idx * 0.02, 
-            phase: idx * ((Math.PI * 2) / planets.length),
-            y: 0
-          }}
+          orbit={{ radius: 9 + idx * 4, speed: 0.2 - idx * 0.02, phase: idx * ((Math.PI * 2) / planets.length), y: 0 }}
         />
       ))}
     </group>
   );
 }
 
-function GalaxyScene({
-  activeSection,
-  onSectionClick,
-  view,
-  planets,
-  onPlanetClick
-}: {
-  activeSection: Section | null;
-  onSectionClick: (section: Section, currentPos: THREE.Vector3) => void;
-  view: 'galaxy' | 'system';
-  planets: Planet[];
-  onPlanetClick: (planet: Planet) => void;
-}) {
+function GalaxyScene({ activeSection, onSectionClick, view, planets, onPlanetClick }: any) {
   return (
     <>
       <ambientLight intensity={0.1} /> 
       <directionalLight position={[10, 10, 5]} intensity={1} />
-      
       <BackgroundImage />
       <ParticleField /> 
-
       {view === 'galaxy' ? (
         <CentralStar />
       ) : (
         <SystemDetails activeSection={activeSection!} planets={planets} onPlanetClick={onPlanetClick} />
       )}
-
       {view === 'galaxy' && sections.map((section, idx) => (
         <OrbitingSystem
           key={section.id}
           section={section}
-          onClick={(pos) => onSectionClick(section, pos)}
+          onClick={(pos: any) => onSectionClick(section, pos)}
           isActive={activeSection?.id === section.id}
-          orbit={{
-            radius: 14 + idx * 6, 
-            speed: 0.1 + idx * 0.01,
-            phase: idx * ((Math.PI * 2) / sections.length),
-            y: Math.sin(idx) * 2 
-          }}
+          orbit={{ radius: 14 + idx * 6, speed: 0.1 + idx * 0.01, phase: idx * ((Math.PI * 2) / sections.length), y: Math.sin(idx) * 2 }}
         />
       ))}
-
       <Stars radius={400} depth={50} count={2000} factor={4} saturation={0} fade speed={1} />
     </>
   );
 }
 
-// --- NEW COMPONENT: Handle Intro Animation ---
 function IntroCameraRig() {
   const { camera } = useThree();
-  
   useLayoutEffect(() => {
-    // 1. Set Start Position (Far Deep space)
-    camera.position.set(0, 100, 400); // Started much further back
-    
-    // 2. Animate to "Home" Position
+    // START FAR AWAY (Deep Space)
+    camera.position.set(0, 100, 400); 
+    // FLY IN over 8 seconds (matching the greeting text)
     gsap.to(camera.position, {
-      x: 0,
-      y: 20,
-      z: 40,
-      duration: 7, // Slower, matching the greetings duration
-      ease: "power3.out"
+      x: 0, y: 20, z: 40, duration: 8, ease: "power3.out"
     });
   }, [camera]);
-
   return null;
 }
 
-export default function AnimatedPortfolio() {
+export default function AnimatedPortfolio({ introPlaying = false }: { introPlaying?: boolean }) {
   const [activeSection, setActiveSection] = useState<Section | null>(null);
   const [activePlanet, setActivePlanet] = useState<Planet | null>(null);
   const [view, setView] = useState<'galaxy' | 'system'>('galaxy');
@@ -580,39 +447,20 @@ export default function AnimatedPortfolio() {
     setShowMenu(false);
     setView('system');
     setPlanets(section.content.planets);
-
     if (controlsRef.current) {
       const idx = sections.findIndex((s) => s.id === section.id);
       const radius = 14 + idx * 6;
       const phase = idx * ((Math.PI * 2) / sections.length);
       const y = Math.sin(idx) * 2;
       const target = currentPos ?? new THREE.Vector3(Math.cos(phase) * radius, y, Math.sin(phase) * radius);
-
-      // --- CINEMATIC FLY-IN ---
-      gsap.to(controlsRef.current.target, {
-        x: target.x,
-        y: target.y,
-        z: target.z,
-        duration: 2.5,
-        ease: "power3.inOut"
-      });
-
+      gsap.to(controlsRef.current.target, { x: target.x, y: target.y, z: target.z, duration: 2.5, ease: "power3.inOut" });
       const offset = target.clone().normalize().multiplyScalar(8); 
       const camPos = target.clone().add(new THREE.Vector3(offset.x, 2, offset.z)); 
-
-      gsap.to(controlsRef.current.object.position, {
-        x: camPos.x,
-        y: camPos.y,
-        z: camPos.z,
-        duration: 2.5,
-        ease: "power3.inOut"
-      });
+      gsap.to(controlsRef.current.object.position, { x: camPos.x, y: camPos.y, z: camPos.z, duration: 2.5, ease: "power3.inOut" });
     }
   };
 
-  const handlePlanetClick = (planet: Planet) => {
-    setActivePlanet(planet);
-  };
+  const handlePlanetClick = (planet: Planet) => { setActivePlanet(planet); };
 
   const resetView = () => {
     setActiveSection(null);
@@ -620,83 +468,42 @@ export default function AnimatedPortfolio() {
     setView('galaxy');
     setPlanets([]);
     if (controlsRef.current) {
-      // Zoom out to "Home" view
-      gsap.to(controlsRef.current.target, {
-        x: 0,
-        y: 0,
-        z: 0,
-        duration: 2,
-        ease: "power3.inOut"
-      });
-
-      gsap.to(controlsRef.current.object.position, {
-        x: 0,
-        y: 20, 
-        z: 40,
-        duration: 2,
-        ease: "power3.inOut"
-      });
+      gsap.to(controlsRef.current.target, { x: 0, y: 0, z: 0, duration: 2, ease: "power3.inOut" });
+      gsap.to(controlsRef.current.object.position, { x: 0, y: 20, z: 40, duration: 2, ease: "power3.inOut" });
     }
   };
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden">
-      <div className="absolute top-0 left-0 right-0 z-40 bg-gradient-to-b from-black/80 via-black/40 to-transparent backdrop-blur-sm border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-between">
-          <button
-            onClick={resetView}
-            className="text-white hover:text-cyan-400 transition-all duration-300 font-black text-xl tracking-tight flex items-center space-x-2 group"
-          >
-            <SparklesIcon className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-            <span>Home</span>
-          </button>
-
-          {view === 'system' && (
-            <button
-              onClick={resetView}
-              className="text-white hover:text-cyan-400 transition-all p-2 hover:bg-white/10 rounded-lg flex items-center space-x-2"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span>Back to Galaxy</span>
+      {/* UI Elements - Hidden during intro */}
+      {!introPlaying && (
+        <div className="absolute top-0 left-0 right-0 z-40 bg-gradient-to-b from-black/80 via-black/40 to-transparent backdrop-blur-sm border-b border-white/10 transition-opacity duration-1000 opacity-100">
+          <div className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-between">
+            <button onClick={resetView} className="text-white hover:text-cyan-400 transition-all duration-300 font-black text-xl tracking-tight flex items-center space-x-2 group">
+              <SparklesIcon className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+              <span>Home</span>
             </button>
-          )}
-
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="text-white hover:text-cyan-400 transition-all p-2 hover:bg-white/10 rounded-lg"
-          >
-            {showMenu ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+            {view === 'system' && (
+              <button onClick={resetView} className="text-white hover:text-cyan-400 transition-all p-2 hover:bg-white/10 rounded-lg flex items-center space-x-2">
+                <ArrowLeft className="w-5 h-5" />
+                <span>Back to Galaxy</span>
+              </button>
+            )}
+            <button onClick={() => setShowMenu(!showMenu)} className="text-white hover:text-cyan-400 transition-all p-2 hover:bg-white/10 rounded-lg">
+              {showMenu ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {showMenu && (
         <div className="absolute top-20 right-4 z-40 bg-black/80 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl max-w-sm w-full">
-          <h3 className="text-white font-black text-lg mb-6 flex items-center space-x-2">
-            <Zap className="w-5 h-5 text-cyan-400" />
-            <span>Explore My Journey</span>
-          </h3>
+          <h3 className="text-white font-black text-lg mb-6 flex items-center space-x-2"><Zap className="w-5 h-5 text-cyan-400" /><span>Explore My Journey</span></h3>
           <div className="space-y-2">
             {sections.map((section) => (
-              <button
-                key={section.id}
-                onClick={() => handleSectionClick(section)}
-                className="flex items-center space-x-3 w-full text-left px-4 py-3 rounded-xl transition-all hover:bg-white/10 group relative overflow-hidden"
-              >
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0 relative z-10"
-                  style={{ backgroundColor: section.color }}
-                >
-                  <section.icon className="w-6 h-6 text-white" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-white group-hover:text-cyan-300 transition-colors font-semibold">
-                    {section.title}
-                  </p>
-                  <p className="text-xs text-slate-400 group-hover:text-slate-300">
-                    {section.content.description.substring(0, 40)}...
-                  </p>
-                </div>
+              <button key={section.id} onClick={() => handleSectionClick(section)} className="flex items-center space-x-3 w-full text-left px-4 py-3 rounded-xl transition-all hover:bg-white/10 group relative overflow-hidden">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0 relative z-10" style={{ backgroundColor: section.color }}><section.icon className="w-6 h-6 text-white" /></div>
+                <div className="flex-1"><p className="text-white group-hover:text-cyan-300 transition-colors font-semibold">{section.title}</p></div>
                 <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition-all group-hover:translate-x-1" />
               </button>
             ))}
@@ -704,72 +511,32 @@ export default function AnimatedPortfolio() {
         </div>
       )}
 
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40">
-        <div className="text-center space-y-3">
-          <p className="text-white/70 text-sm bg-black/50 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 font-medium">
-            🌌 You are the Central Star • Orbiting Galaxies are your Skills • Click to Explore
-          </p>
+      {!introPlaying && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 transition-opacity duration-1000 opacity-100">
+          <div className="text-center space-y-3">
+            <p className="text-white/70 text-sm bg-black/50 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 font-medium">
+              🌌 You are the Central Star • Orbiting Galaxies are your Skills • Click to Explore
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
-      <Canvas
-        camera={{ position: [0, 100, 400], fov: 50 }} // Initial pos handled by IntroCameraRig
-        gl={{ antialias: true, alpha: true }}
-      >
+      <Canvas camera={{ position: [0, 50, 400], fov: 50 }} gl={{ antialias: true, alpha: true }}>
         <Suspense fallback={null}>
           <color attach="background" args={['#000000']} />
- 
-           <IntroCameraRig /> 
-
-           <GalaxyScene 
-             activeSection={activeSection} 
-             onSectionClick={handleSectionClick} 
-             view={view} 
-             planets={planets} 
-             onPlanetClick={handlePlanetClick} 
-           />
- 
-           <OrbitControls
-            ref={controlsRef}
-            enablePan={false}
-            enableZoom={true}
-            enableRotate={true}
-            maxDistance={80}
-            minDistance={8}
-            maxPolarAngle={Math.PI / 1.5}
-            minPolarAngle={Math.PI / 4}
-            autoRotate={false} 
-          />
+           <IntroCameraRig />
+           <GalaxyScene activeSection={activeSection} onSectionClick={handleSectionClick} view={view} planets={planets} onPlanetClick={handlePlanetClick} />
+           <OrbitControls ref={controlsRef} enablePan={false} enableZoom={true} enableRotate={true} maxDistance={80} minDistance={8} maxPolarAngle={Math.PI / 1.5} minPolarAngle={Math.PI / 4} autoRotate={false} />
         </Suspense>
       </Canvas>
 
       {activePlanet && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md transition-opacity"
-          onClick={() => setActivePlanet(null)}
-        >
-          <div
-            className="bg-gradient-to-br from-slate-900 to-black rounded-3xl p-8 md:p-12 max-w-2xl w-full border border-white/10 shadow-2xl transform transition-all animate-fade-in relative overflow-hidden"
-            style={{
-              borderColor: activePlanet.color,
-              borderWidth: '2px',
-              boxShadow: `0 0 80px ${activePlanet.color}60`
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setActivePlanet(null)}
-              className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors bg-white/10 p-3 rounded-xl hover:bg-white/20 z-10"
-            >
-              <X className="w-6 h-6" />
-            </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md transition-opacity" onClick={() => setActivePlanet(null)}>
+          <div className="bg-gradient-to-br from-slate-900 to-black rounded-3xl p-8 md:p-12 max-w-2xl w-full border border-white/10 shadow-2xl transform transition-all animate-fade-in relative overflow-hidden" style={{ borderColor: activePlanet.color, borderWidth: '2px', boxShadow: `0 0 80px ${activePlanet.color}60` }} onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setActivePlanet(null)} className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors bg-white/10 p-3 rounded-xl hover:bg-white/20 z-10"><X className="w-6 h-6" /></button>
             <div className="relative z-10 text-left">
               <h2 className="text-3xl font-black text-white mb-6 text-center">{activePlanet.title}</h2>
-              {activePlanet.detail ? (
-                <p className="text-lg text-slate-300 whitespace-pre-line">{activePlanet.detail}</p>
-              ) : (
-                <p className="text-lg text-slate-300 text-center">Detailed information about this achievement or skill would be displayed here.</p>
-              )}
+              {activePlanet.detail ? <p className="text-lg text-slate-300 whitespace-pre-line">{activePlanet.detail}</p> : <p className="text-lg text-slate-300 text-center">Detailed information about this achievement or skill would be displayed here.</p>}
             </div>
           </div>
         </div>
