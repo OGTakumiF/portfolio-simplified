@@ -26,21 +26,26 @@ function Cable({ start, end, v1, v2, color = '#111' }: any) {
       midA={v1}
       midB={v2}
       color={color}
-      lineWidth={2}
+      lineWidth={1.5}
     />
   );
 }
 
 // --- CARS ---
 
-function Wheel({ position, rotation }: any) {
+function Wheel({ position, rotation, rimColor = "#888" }: any) {
   return (
     <group position={position} rotation={rotation}>
       <Cylinder args={[0.35, 0.35, 0.25, 16]} rotation={[Math.PI / 2, 0, 0]}>
         <meshStandardMaterial color="#111" />
       </Cylinder>
+      {/* Rim */}
       <Cylinder args={[0.2, 0.2, 0.26, 8]} rotation={[Math.PI / 2, 0, 0]}>
-        <meshStandardMaterial color="#888" metalness={0.8} roughness={0.2} />
+        <meshStandardMaterial color={rimColor} metalness={0.6} roughness={0.3} />
+      </Cylinder>
+      {/* Hub */}
+      <Cylinder args={[0.05, 0.05, 0.27, 8]} rotation={[Math.PI / 2, 0, 0]}>
+        <meshStandardMaterial color="#111" />
       </Cylinder>
     </group>
   );
@@ -55,49 +60,81 @@ function AE86({ position, rotation }: any) {
         <meshStandardMaterial color="#fff" />
       </RoundedBox>
       {/* Black Strip (Panda Scheme) */}
-      <Box args={[1.82, 0.2, 4.22]} position={[0, 0.45, 0]}>
+      <Box args={[1.82, 0.25, 4.22]} position={[0, 0.45, 0]}>
         <meshStandardMaterial color="#111" />
       </Box>
       
       {/* Cabin (Greenhouse) */}
-      <group position={[0, 1.3, -0.2]}>
-         <RoundedBox args={[1.6, 0.7, 2.2]} radius={0.1}>
+      <group position={[0, 1.3, 0.2]}>
+         {/* Main Roof Block */}
+         <RoundedBox args={[1.5, 0.7, 1.8]} radius={0.1}>
             <meshStandardMaterial color="#fff" />
          </RoundedBox>
          {/* Windows (Black Glass) */}
-         <Box args={[1.62, 0.5, 2]} position={[0, 0.05, 0]}>
+         <Box args={[1.52, 0.55, 1.6]} position={[0, 0.05, 0]}>
             <meshStandardMaterial color="#111" roughness={0.1} />
          </Box>
       </group>
 
+      {/* --- OPEN TRUNK (Hatchback) --- */}
+      {/* Pivoted at the top roof line */}
+      <group position={[0, 1.6, 1.1]} rotation={[-0.8, 0, 0]}> {/* Rotated UP */}
+         {/* The Glass/Metal Hatch */}
+         <Box args={[1.4, 0.1, 1.2]} position={[0, 0, 0.6]}>
+            <meshStandardMaterial color="#fff" />
+         </Box>
+         <Box args={[1.3, 0.05, 1]} position={[0, 0.05, 0.6]}>
+            <meshStandardMaterial color="#111" />
+         </Box>
+         {/* Struts holding it up */}
+         <Cylinder args={[0.02, 0.02, 1.2]} position={[-0.6, 0.5, 0.3]} rotation={[0.5, 0, 0]}>
+            <meshStandardMaterial color="#333" />
+         </Cylinder>
+         <Cylinder args={[0.02, 0.02, 1.2]} position={[0.6, 0.5, 0.3]} rotation={[0.5, 0, 0]}>
+            <meshStandardMaterial color="#333" />
+         </Cylinder>
+      </group>
+
+      {/* Trunk Interior (Visible now) */}
+      <Box args={[1.4, 0.4, 1]} position={[0, 0.7, 1.5]}>
+         <meshStandardMaterial color="#222" />
+      </Box>
+
       {/* Pop-up Headlights (Closed) */}
-      <Box args={[0.4, 0.05, 0.3]} position={[-0.5, 0.91, 1.8]}>
+      <Box args={[0.4, 0.05, 0.3]} position={[-0.5, 0.91, -1.8]}>
          <meshStandardMaterial color="#111" />
       </Box>
-      <Box args={[0.4, 0.05, 0.3]} position={[0.5, 0.91, 1.8]}>
+      <Box args={[0.4, 0.05, 0.3]} position={[0.5, 0.91, -1.8]}>
          <meshStandardMaterial color="#111" />
       </Box>
 
       {/* Tail Lights */}
-      <Box args={[1.4, 0.2, 0.1]} position={[0, 0.7, -2.1]}>
-         <meshStandardMaterial color="#aa0000" />
-      </Box>
+      <group position={[0, 0.7, 2.1]}>
+         <Box args={[1.6, 0.25, 0.1]}><meshStandardMaterial color="#111" /></Box>
+         <Box args={[0.4, 0.15, 0.12]} position={[-0.5, 0, 0]}><meshStandardMaterial color="#aa0000" /></Box>
+         <Box args={[0.4, 0.15, 0.12]} position={[0.5, 0, 0]}><meshStandardMaterial color="#aa0000" /></Box>
+         <Box args={[0.3, 0.15, 0.12]} position={[0, 0, 0]}><meshStandardMaterial color="#ffaa00" /></Box> {/* Turn signal */}
+         {/* License Plate */}
+         <Box args={[0.4, 0.15, 0.12]} position={[0, -0.2, 0]}>
+            <meshStandardMaterial color="#fff" />
+         </Box>
+      </group>
 
       {/* Wheels */}
-      <Wheel position={[-0.75, 0.35, 1.3]} />
-      <Wheel position={[0.75, 0.35, 1.3]} />
-      <Wheel position={[-0.75, 0.35, -1.3]} />
-      <Wheel position={[0.75, 0.35, -1.3]} />
+      <Wheel position={[-0.75, 0.35, 1.3]} rimColor="#333" />
+      <Wheel position={[0.75, 0.35, 1.3]} rimColor="#333" />
+      <Wheel position={[-0.75, 0.35, -1.3]} rimColor="#333" />
+      <Wheel position={[0.75, 0.35, -1.3]} rimColor="#333" />
 
-      {/* Side Decal Text - Default Font to avoid loading errors */}
+      {/* Side Decal Text */}
       <Text 
-        position={[0.92, 0.7, 0.5]} 
+        position={[0.92, 0.65, 0.5]} 
         rotation={[0, Math.PI / 2, 0]} 
-        fontSize={0.15} 
+        fontSize={0.12} 
         color="#111"
         anchorX="center"
       >
-        FUJIWARA TOFU
+        藤原とうふ店 (自家用)
       </Text>
     </group>
   );
@@ -106,12 +143,9 @@ function AE86({ position, rotation }: any) {
 function Subaru({ position, rotation }: any) {
   return (
     <group position={position} rotation={rotation}>
-      {/* Body (Blue) */}
       <RoundedBox args={[1.8, 0.65, 4.3]} radius={0.05} position={[0, 0.6, 0]}>
         <meshStandardMaterial color="#0044aa" metalness={0.6} roughness={0.2} />
       </RoundedBox>
-      
-      {/* Cabin */}
       <group position={[0, 1.3, -0.3]}>
          <RoundedBox args={[1.6, 0.7, 2.4]} radius={0.15}>
             <meshStandardMaterial color="#0044aa" metalness={0.6} roughness={0.2} />
@@ -120,13 +154,9 @@ function Subaru({ position, rotation }: any) {
             <meshStandardMaterial color="#111" roughness={0.1} />
          </Box>
       </group>
-
-      {/* Hood Scoop */}
       <Box args={[0.6, 0.1, 0.6]} position={[0, 0.95, 1.2]}>
          <meshStandardMaterial color="#0044aa" />
       </Box>
-
-      {/* Spoiler */}
       <group position={[0, 1.1, -2]}>
          <Box args={[1.8, 0.1, 0.4]}>
             <meshStandardMaterial color="#0044aa" />
@@ -138,18 +168,81 @@ function Subaru({ position, rotation }: any) {
             <meshStandardMaterial color="#0044aa" />
          </Box>
       </group>
-
-      {/* Gold Wheels */}
       <group>
-        <Wheel position={[-0.75, 0.35, 1.3]} />
-        <Cylinder args={[0.2, 0.2, 0.27, 8]} rotation={[Math.PI / 2, 0, 0]} position={[-0.75, 0.35, 1.3]}><meshStandardMaterial color="#daa520" /></Cylinder>
-        <Wheel position={[0.75, 0.35, 1.3]} />
-        <Cylinder args={[0.2, 0.2, 0.27, 8]} rotation={[Math.PI / 2, 0, 0]} position={[0.75, 0.35, 1.3]}><meshStandardMaterial color="#daa520" /></Cylinder>
-        <Wheel position={[-0.75, 0.35, -1.3]} />
-        <Cylinder args={[0.2, 0.2, 0.27, 8]} rotation={[Math.PI / 2, 0, 0]} position={[-0.75, 0.35, -1.3]}><meshStandardMaterial color="#daa520" /></Cylinder>
-        <Wheel position={[0.75, 0.35, -1.3]} />
-        <Cylinder args={[0.2, 0.2, 0.27, 8]} rotation={[Math.PI / 2, 0, 0]} position={[0.75, 0.35, -1.3]}><meshStandardMaterial color="#daa520" /></Cylinder>
+        <Wheel position={[-0.75, 0.35, 1.3]} rimColor="#daa520" />
+        <Wheel position={[0.75, 0.35, 1.3]} rimColor="#daa520" />
+        <Wheel position={[-0.75, 0.35, -1.3]} rimColor="#daa520" />
+        <Wheel position={[0.75, 0.35, -1.3]} rimColor="#daa520" />
       </group>
+    </group>
+  );
+}
+
+// --- CHARACTER: BUNTA ---
+function Bunta({ position, rotation }: any) {
+  return (
+    <group position={position} rotation={rotation}>
+      {/* Head */}
+      <Sphere args={[0.2, 16, 16]} position={[0, 1.6, 0]}>
+        <meshStandardMaterial color="#e0ac69" />
+      </Sphere>
+      {/* Hair (Flat top/Spiky) */}
+      <Cylinder args={[0.22, 0.2, 0.1]} position={[0, 1.75, 0]}>
+         <meshStandardMaterial color="#222" />
+      </Cylinder>
+
+      {/* Body (Grey Shirt) */}
+      <RoundedBox args={[0.5, 0.7, 0.25]} radius={0.05} position={[0, 1, 0]}>
+        <meshStandardMaterial color="#777" /> {/* Grey Shirt */}
+      </RoundedBox>
+
+      {/* Apron (Dark Blue/Black) */}
+      <Box args={[0.52, 0.9, 0.05]} position={[0, 0.7, 0.13]}>
+         <meshStandardMaterial color="#1a1a2e" />
+      </Box>
+      {/* Apron String/Neck */}
+      <Cylinder args={[0.15, 0.25, 0.4]} position={[0, 1.4, 0.1]} rotation={[0.2, 0, 0]}>
+         <meshStandardMaterial color="#1a1a2e" />
+      </Cylinder>
+
+      {/* Arms holding Tofu Tray */}
+      <group position={[0, 1, 0.2]}>
+         {/* Left Arm */}
+         <RoundedBox args={[0.12, 0.4, 0.12]} position={[-0.25, 0, 0.2]} rotation={[1.2, 0, -0.2]}>
+            <meshStandardMaterial color="#777" />
+         </RoundedBox>
+         {/* Right Arm */}
+         <RoundedBox args={[0.12, 0.4, 0.12]} position={[0.25, 0, 0.2]} rotation={[1.2, 0, 0.2]}>
+            <meshStandardMaterial color="#777" />
+         </RoundedBox>
+         
+         {/* The Tofu Tray */}
+         <Box args={[0.7, 0.15, 0.5]} position={[0, 0, 0.5]}>
+            <meshStandardMaterial color="#8b4513" /> {/* Wood Tray */}
+         </Box>
+         {/* Tofu Blocks inside */}
+         <Box args={[0.6, 0.1, 0.4]} position={[0, 0.1, 0.5]}>
+            <meshStandardMaterial color="#fff" />
+         </Box>
+      </group>
+
+      {/* Legs (Dark Pants) */}
+      <group position={[0, 0.35, 0]}>
+         <RoundedBox args={[0.18, 0.75, 0.18]} position={[-0.15, 0, 0]}>
+            <meshStandardMaterial color="#111" />
+         </RoundedBox>
+         <RoundedBox args={[0.18, 0.75, 0.18]} position={[0.15, 0, 0]}>
+            <meshStandardMaterial color="#111" />
+         </RoundedBox>
+      </group>
+      
+      {/* Boots */}
+      <Box args={[0.2, 0.15, 0.3]} position={[-0.15, -0.05, 0.05]}>
+         <meshStandardMaterial color="#fff" />
+      </Box>
+      <Box args={[0.2, 0.15, 0.3]} position={[0.15, -0.05, 0.05]}>
+         <meshStandardMaterial color="#fff" />
+      </Box>
     </group>
   );
 }
@@ -160,27 +253,9 @@ function Asphalt() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
       <planeGeometry args={[60, 60]} />
-      <meshStandardMaterial color="#222" roughness={0.8} />
+      <meshStandardMaterial color="#333" roughness={0.9} />
     </mesh>
   );
-}
-
-function GuardRail() {
-  const rails = useMemo(() => {
-    return [...Array(12)].map((_, i) => (
-      <group key={i} position={[-8, 0.5, -15 + i * 3]}>
-        {/* Post */}
-        <Cylinder args={[0.1, 0.1, 1.5]} position={[0, 0, 0]}>
-           <meshStandardMaterial color="#ccc" />
-        </Cylinder>
-        {/* Rails */}
-        <Box args={[0.2, 0.3, 3.2]} position={[0.2, 0.4, 0]}>
-           <meshStandardMaterial color="#fff" />
-        </Box>
-      </group>
-    ));
-  }, []);
-  return <group>{rails}</group>;
 }
 
 function UtilityPole({ activeId, onSectionSelect }: { activeId: string | null, onSectionSelect: (id: string, pos: THREE.Vector3) => void }) {
@@ -188,9 +263,8 @@ function UtilityPole({ activeId, onSectionSelect }: { activeId: string | null, o
 
   return (
     <group ref={groupRef} position={[-6, 0, 4]} rotation={[0, 0.5, 0]}>
-      {/* Concrete Pole */}
       <Cylinder args={[0.2, 0.25, 12, 16]} position={[0, 6, 0]}>
-        <meshStandardMaterial color="#888" roughness={0.9} />
+        <meshStandardMaterial color="#777" roughness={0.9} />
       </Cylinder>
       
       {/* Street Light */}
@@ -198,27 +272,16 @@ function UtilityPole({ activeId, onSectionSelect }: { activeId: string | null, o
         <Box args={[3, 0.15, 0.15]} position={[1.5, 0, 0]}>
            <meshStandardMaterial color="#666" />
         </Box>
-        <Box args={[0.8, 0.3, 0.4]} position={[3, -0.1, 0]}>
-           <meshStandardMaterial color="#ddd" />
-        </Box>
-        <pointLight position={[3, -0.5, 0]} color="#ffaa55" intensity={10} distance={25} />
-        <mesh position={[3, -0.25, 0]} rotation={[Math.PI, 0, 0]}>
-           <coneGeometry args={[0.5, 1, 32, 1, true]} />
-           <meshBasicMaterial color="#ffaa55" transparent opacity={0.5} side={THREE.DoubleSide} />
-        </mesh>
+        <pointLight position={[3, -0.5, 0]} color="#aaddff" intensity={3} distance={20} />
       </group>
 
-      {/* Signs (Attached to pole) */}
+      {/* Signs */}
       {sections.map((section, idx) => {
         const yPos = 8 - idx * 1.1;
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const isActive = activeId === section.id;
-
         return (
           <group 
             key={section.id} 
             position={[0.25, yPos, 0]} 
-            rotation={[0, 0, 0]}
             onClick={(e) => {
               e.stopPropagation();
               const worldPos = new THREE.Vector3(0, yPos, 0).applyMatrix4(groupRef.current!.matrixWorld);
@@ -227,15 +290,12 @@ function UtilityPole({ activeId, onSectionSelect }: { activeId: string | null, o
             onPointerOver={() => document.body.style.cursor = 'pointer'}
             onPointerOut={() => document.body.style.cursor = 'auto'}
           >
-            {/* Sign Plate */}
             <Box args={[0.1, 0.8, 2.5]} position={[0.1, 0, 1.2]}>
-               <meshStandardMaterial color="#f0f0f0" />
+               <meshStandardMaterial color="#fff" />
             </Box>
             <Box args={[0.11, 0.7, 2.4]} position={[0.1, 0, 1.2]}>
                <meshStandardMaterial color={section.color} />
             </Box>
-
-            {/* Text */}
             <Text
               position={[0.16, 0, 1.2]}
               rotation={[0, Math.PI / 2, 0]}
@@ -257,87 +317,91 @@ function UtilityPole({ activeId, onSectionSelect }: { activeId: string | null, o
 function TofuShop() {
   return (
     <group position={[3, 0, -3]} rotation={[0, -0.2, 0]}>
-      {/* Foundation */}
-      <Box args={[8, 0.5, 6]} position={[0, 0.25, 0]}>
-        <meshStandardMaterial color="#555" />
+      {/* Main Building Block */}
+      <Box args={[9, 8, 7]} position={[0, 4, -1.5]}>
+        <meshStandardMaterial color="#ccc" /> {/* Beige/Grey Wall */}
       </Box>
 
-      {/* First Floor (Shop) */}
-      <Box args={[7, 3.5, 5]} position={[0, 2, -0.5]}>
-        <meshStandardMaterial color="#eaddcf" /> {/* Beige wall */}
-      </Box>
+      {/* --- SHOP FRONT --- */}
       
-      {/* Shop Front - Wood Frame */}
-      <group position={[0, 1.5, 2]}>
-         <Box args={[6, 3, 0.2]} position={[0, 0.5, 0]}>
-            <meshStandardMaterial color="#5c4033" />
+      {/* 1. Metal Shutter Housing (Top Box) */}
+      <Box args={[3.2, 0.6, 0.4]} position={[-1.5, 3.2, 2.1]}>
+         <meshStandardMaterial color="#778899" metalness={0.4} /> {/* Blue-ish Grey Metal */}
+      </Box>
+
+      {/* 2. Sliding Door (Open) */}
+      <group position={[-1.5, 1.5, 2]}>
+         {/* Interior Void */}
+         <Box args={[3, 3, 0.1]} position={[0, 0, -0.1]}>
+            <meshBasicMaterial color="#000" />
          </Box>
-         {/* Sliding Door 1 */}
-         <Box args={[1.5, 2.5, 0.1]} position={[-1.5, 0.25, 0.1]}>
-            <meshStandardMaterial color="#d4c4a8" /> {/* Paper color */}
-         </Box>
-         <Box args={[1.5, 2.5, 0.1]} position={[-1.5, 0.25, 0.12]} wireframe>
-            <meshBasicMaterial color="#3e2723" />
-         </Box>
-         {/* Sliding Door 2 */}
-         <Box args={[1.5, 2.5, 0.1]} position={[0.1, 0.25, 0.05]}>
-            <meshStandardMaterial color="#d4c4a8" />
-         </Box>
-         <Box args={[1.5, 2.5, 0.1]} position={[0.1, 0.25, 0.07]} wireframe>
-            <meshBasicMaterial color="#3e2723" />
-         </Box>
-         {/* Window */}
-         <Box args={[2, 2, 0.1]} position={[2, 0.5, 0.1]}>
-            <meshStandardMaterial color="#8899aa" metalness={0.5} roughness={0.1} transparent opacity={0.6} />
-         </Box>
+         {/* Door Frame */}
+         <Box args={[0.1, 3, 0.1]} position={[-1.5, 0, 0]}><meshStandardMaterial color="#8b4513" /></Box>
+         <Box args={[0.1, 3, 0.1]} position={[1.5, 0, 0]}><meshStandardMaterial color="#8b4513" /></Box>
+         <Box args={[3, 0.1, 0.1]} position={[0, 1.5, 0]}><meshStandardMaterial color="#8b4513" /></Box>
+         
+         {/* The Sliding Door (Pushed to the right) */}
+         <group position={[0.8, 0, 0]}>
+            <Box args={[1.4, 2.9, 0.05]} position={[0, 0, 0]}>
+               <meshStandardMaterial color="#d4c4a8" /> {/* Paper/Wood */}
+            </Box>
+            <Box args={[1.4, 2.9, 0.06]} wireframe>
+               <meshBasicMaterial color="#3e2723" />
+            </Box>
+         </group>
       </group>
 
-      {/* Awning (Blue) */}
-      <group position={[0, 3.2, 2.5]} rotation={[0.2, 0, 0]}>
-         <Box args={[6.5, 0.1, 1.5]}>
-            <meshStandardMaterial color="#1e3a8a" />
+      {/* 3. The Awning (Canvas Roof) */}
+      <group position={[-1.5, 4, 3.2]} rotation={[0.2, 0, 0]}>
+         {/* Main Sheet */}
+         <Box args={[3.5, 0.1, 2.5]}>
+            <meshStandardMaterial color="#f0f0f0" /> {/* White/Dirty White */}
          </Box>
-         {/* Shop Sign Text */}
+         {/* Front Flap (Valence) */}
+         <Box args={[3.5, 0.5, 0.1]} position={[0, -0.25, 1.25]} rotation={[-0.2, 0, 0]}>
+            <meshStandardMaterial color="#f0f0f0" />
+         </Box>
+         
+         {/* Text: Top Line */}
          <Text 
-            position={[0, 0.06, 0.4]} 
+            position={[0, 0.06, 0.5]} 
             rotation={[-Math.PI/2, 0, 0]} 
-            fontSize={0.3} 
-            color="#fff"
+            fontSize={0.2} 
+            color="#222"
+            font="https://fonts.gstatic.com/s/notosansjp/v52/-F6jfjtqLzI2JPCgQBnw7HFQggM.woff"
+         >
+            手づくりの店   とうふ 油あげ
+         </Text>
+
+         {/* Text: Front Main Line */}
+         <Text 
+            position={[0, -0.25, 1.31]} 
+            fontSize={0.35} 
+            color="#222"
+            font="https://fonts.gstatic.com/s/notosansjp/v52/-F6jfjtqLzI2JPCgQBnw7HFQggM.woff"
             fontWeight="bold"
          >
-            FUJIWARA TOFU SHOP
+            藤原 豆腐 店
          </Text>
       </group>
 
-      {/* Second Floor */}
-      <Box args={[7, 3, 5]} position={[0, 5, -0.5]}>
-        <meshStandardMaterial color="#eaddcf" />
-      </Box>
-      {/* Balcony Railing */}
-      <Box args={[6.5, 0.8, 0.1]} position={[0, 4, 2]}>
-         <meshStandardMaterial color="#333" />
-      </Box>
-      {/* Roof */}
-      <group position={[0, 6.5, 0]}>
-         <Box args={[7.5, 0.2, 6]} rotation={[0, 0, 0]}>
+      {/* 4. Details */}
+      {/* Drain Pipe (Left) */}
+      <Cylinder args={[0.1, 0.1, 8]} position={[-4.2, 4, 2.2]}>
+         <meshStandardMaterial color="#888" />
+      </Cylinder>
+      {/* AC Unit (Right Wall) */}
+      <group position={[3, 3, 2.2]}>
+         <Box args={[1.2, 1.2, 0.5]}><meshStandardMaterial color="#ddd" /></Box>
+         <Cylinder args={[0.4, 0.4, 0.6, 16]} rotation={[Math.PI/2, 0, 0]}>
             <meshStandardMaterial color="#333" />
-         </Box>
-         <Cylinder args={[3.8, 3.8, 7.5, 3]} rotation={[0, 0, Math.PI/2]} position={[0, 0.8, 0]}>
-            <meshStandardMaterial color="#444" />
          </Cylinder>
       </group>
 
-      {/* Vending Machine */}
-      <group position={[3, 1.5, 2.2]} rotation={[0, -0.3, 0]}>
-         <Box args={[1, 2.2, 0.8]}>
-            <meshStandardMaterial color="#fff" />
-         </Box>
-         <Box args={[0.8, 1.2, 0.1]} position={[0, 0.2, 0.41]}>
-            <meshBasicMaterial color="#cc0000" /> {/* Coke red */}
-         </Box>
-         {/* Vending Machine Light */}
-         <pointLight color="#fff" intensity={2} distance={5} position={[0, 0.5, 1]} />
-      </group>
+      {/* Side Fence/Neighbor */}
+      <Box args={[0.2, 3, 6]} position={[4.5, 1.5, 1]}>
+         <meshStandardMaterial color="#5c4033" />
+      </Box>
 
     </group>
   );
@@ -346,8 +410,8 @@ function TofuShop() {
 function Wires() {
   return (
     <group>
-       <Cable start={[-6, 11, 4]} end={[3, 6, -3]} v1={[-2, 9, 2]} v2={[1, 7, 0]} color="#111" />
-       <Cable start={[-6, 10.5, 4]} end={[3, 5.5, -3]} v1={[-2, 8.5, 2]} v2={[1, 6.5, 0]} color="#111" />
+       <Cable start={[-6, 11, 4]} end={[3, 7, -1]} v1={[-2, 9, 2]} v2={[1, 8, 0]} color="#222" />
+       <Cable start={[-6, 10.5, 4]} end={[3, 6.5, -1]} v1={[-2, 8.5, 2]} v2={[1, 7.5, 0]} color="#222" />
     </group>
   );
 }
@@ -356,12 +420,13 @@ function CameraRig({ targetPosition }: { targetPosition: THREE.Vector3 | null })
   const { camera, controls } = useThree<any>();
   
   useFrame((state, delta) => {
-    const defaultPos = new THREE.Vector3(-8, 3, 12); 
+    // Default Angle: Looking at shop from street level, slightly left
+    const defaultPos = new THREE.Vector3(-6, 2, 10); 
     const focusPos = targetPosition ? new THREE.Vector3(targetPosition.x - 3, targetPosition.y + 1, 8) : defaultPos;
     
     state.camera.position.lerp(focusPos, 2 * delta);
     
-    const defaultTarget = new THREE.Vector3(0, 2, 0);
+    const defaultTarget = new THREE.Vector3(1, 1.5, 0); // Target center of shop door
     const focusTarget = targetPosition ? new THREE.Vector3(targetPosition.x, targetPosition.y, 0) : defaultTarget;
     
     if (controls) {
@@ -390,7 +455,7 @@ export default function FujiwaraScene() {
   const activeSectionData = sections.find(s => s.id === activeSectionId);
 
   return (
-    <div className="relative w-full h-screen bg-[#111] overflow-hidden font-sans">
+    <div className="relative w-full h-screen bg-[#222] overflow-hidden font-sans">
       {/* UI Overlay */}
       {activeSectionData && (
         <div className="absolute top-1/2 right-4 md:right-20 -translate-y-1/2 z-10 max-w-sm md:max-w-md w-full animate-fade-in pointer-events-none">
@@ -440,13 +505,13 @@ export default function FujiwaraScene() {
         </div>
       )}
 
-      <Canvas shadows dpr={[1, 2]} camera={{ position: [-8, 3, 12], fov: 45 }}>
+      <Canvas shadows dpr={[1, 2]} camera={{ position: [-6, 2, 10], fov: 50 }}>
         <Suspense fallback={null}>
+          {/* Environment - Cool Morning Light */}
           <Environment preset="night" environmentIntensity={0.8} />
           
-          {/* Pushed fog further back so scene isn't hidden */}
-          <fog attach="fog" args={['#111', 30, 90]} />
-          <color attach="background" args={['#111']} />
+          <fog attach="fog" args={['#222', 15, 50]} />
+          <color attach="background" args={['#222']} />
 
           <CameraRig targetPosition={cameraTarget} />
           <OrbitControls 
@@ -458,34 +523,32 @@ export default function FujiwaraScene() {
             maxDistance={25}
           />
 
-          {/* Moonlight - Strong Directional Light */}
+          {/* Morning Sun (Directional Blue-ish) */}
           <directionalLight 
-            position={[10, 10, 5]} 
-            intensity={2} 
+            position={[10, 10, 10]} 
+            intensity={1.5} 
             color="#aaddff" 
             castShadow 
           />
-          {/* Ambient Fill */}
-          <ambientLight intensity={0.8} color="#444" />
+          <ambientLight intensity={0.5} color="#ccddff" />
 
           {/* Scene Components */}
           <UtilityPole activeId={activeSectionId} onSectionSelect={handleSectionSelect} />
           <TofuShop />
+          <Bunta position={[1.5, 0.25, -1]} rotation={[0, -0.2, 0]} />
           <Wires />
           
-          {/* Cars */}
-          <AE86 position={[0, 0, 1]} rotation={[0, -0.4, 0]} />
-          <Subaru position={[-4, 0, -1]} rotation={[0, 0.3, 0]} />
+          {/* Cars - Angled for loading */}
+          <AE86 position={[1.5, 0, 1.5]} rotation={[0, -2.8, 0]} />
+          <Subaru position={[-5, 0, -2]} rotation={[0, 0.5, 0]} />
 
           <Asphalt />
-          <GuardRail />
 
-          {/* Mountain Silhouette */}
-          <group position={[0, 0, -20]}>
-             <mesh position={[0, 5, 0]}>
-                <planeGeometry args={[60, 20]} />
-                <meshBasicMaterial color="#050505" />
-             </mesh>
+          {/* Background Trees / Mountain base */}
+          <group position={[0, 0, -10]}>
+             <Box args={[30, 10, 5]} position={[0, 5, 0]}>
+                <meshStandardMaterial color="#112211" />
+             </Box>
           </group>
 
         </Suspense>
