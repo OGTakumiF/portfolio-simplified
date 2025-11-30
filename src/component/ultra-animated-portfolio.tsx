@@ -1,4 +1,4 @@
-import { Suspense, useRef, useState, useMemo, useEffect } from 'react';
+import { Suspense, useRef, useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
 import { Text, Stars, OrbitControls, Environment, Sparkles, Trail, Sphere, MeshDistortMaterial } from '@react-three/drei';
 import {
@@ -215,53 +215,50 @@ const sections: Section[] = [
 
 function ParticleField() {
   const particles = useRef<THREE.Points>(null);
-  const particleCount = 3000;
-
+  
   useFrame((state) => {
     if (particles.current) {
-      particles.current.rotation.x = state.clock.elapsedTime * 0.0001;
-      particles.current.rotation.y = state.clock.elapsedTime * 0.0002;
-      
-      const positions = particles.current.geometry.attributes.position.array as Float32Array;
-      for (let i = 0; i < positions.length; i += 3) {
-        positions[i + 1] += Math.sin(state.clock.elapsedTime + positions[i]) * 0.001;
-      }
-      particles.current.geometry.attributes.position.needsUpdate = true;
+      // Very slow, ambient rotation
+      particles.current.rotation.y = state.clock.elapsedTime * 0.02;
     }
   });
 
-  const geometry = new THREE.BufferGeometry();
-  const positions = new Float32Array(particleCount * 3);
-  const colors = new Float32Array(particleCount * 3);
+  const geometry = useMemo(() => {
+    const geo = new THREE.BufferGeometry();
+    const count = 3000;
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
 
-  for (let i = 0; i < particleCount * 3; i += 3) {
-    positions[i] = (Math.random() - 0.5) * 200;
-    positions[i + 1] = (Math.random() - 0.5) * 200;
-    positions[i + 2] = (Math.random() - 0.5) * 200;
-    
-    colors[i] = Math.random() * 0.5 + 0.5;
-    colors[i + 1] = Math.random() * 0.5 + 0.5;
-    colors[i + 2] = 1;
-  }
-
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    for (let i = 0; i < count * 3; i += 3) {
+      // Spread particles wide
+      positions[i] = (Math.random() - 0.5) * 400;
+      positions[i + 1] = (Math.random() - 0.5) * 400;
+      positions[i + 2] = (Math.random() - 0.5) * 400;
+      
+      colors[i] = 1;
+      colors[i + 1] = 1;
+      colors[i + 2] = 1;
+    }
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    return geo;
+  }, []);
 
   return (
     <points ref={particles} geometry={geometry}>
       <pointsMaterial 
-        size={0.2} 
+        size={0.3} 
         vertexColors
         sizeAttenuation 
         transparent 
-        opacity={0.6}
+        opacity={0.4}
         blending={THREE.AdditiveBlending}
       />
     </points>
   );
 }
 
-// --- NEW COMPONENT: Real Space Background ---
+// --- Background Image ---
 function BackgroundImage() {
   const texture = useLoader(THREE.TextureLoader, "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=2048&auto=format&fit=crop");
   
@@ -390,7 +387,7 @@ function OrbitingSystem({ section, onClick, isActive, orbit }: {
           setHovered(false);
         }}
       >
-        <sphereGeometry args={[3]} /> {/* Larger hit area */}
+        <sphereGeometry args={[3]} /> 
         <meshBasicMaterial color="red" />
       </mesh>
 
@@ -545,6 +542,27 @@ function GalaxyScene({
   );
 }
 
+// --- NEW COMPONENT: Handle Intro Animation ---
+function IntroCameraRig() {
+  const { camera } = useThree();
+  
+  useLayoutEffect(() => {
+    // 1. Set Start Position (Deep space)
+    camera.position.set(0, 50, 150);
+    
+    // 2. Animate to "Home" Position
+    gsap.to(camera.position, {
+      x: 0,
+      y: 20,
+      z: 40,
+      duration: 3.5, // Cinematic duration
+      ease: "power3.out"
+    });
+  }, [camera]);
+
+  return null;
+}
+
 export default function AnimatedPortfolio() {
   const [activeSection, setActiveSection] = useState<Section | null>(null);
   const [activePlanet, setActivePlanet] = useState<Planet | null>(null);
@@ -561,36 +579,32 @@ export default function AnimatedPortfolio() {
     setPlanets(section.content.planets);
 
     if (controlsRef.current) {
-      // **CINEMATIC FLY-IN LOGIC**
-      // 1. Calculate where the planet is right now
       const idx = sections.findIndex((s) => s.id === section.id);
-      const radius = 14 + idx * 6; // Must match galaxy scene orbit radius
-      // NOTE: For a truly perfect fly-in to a moving object, we'd need to freeze time or track it.
-      // Approximation: We fly to a point on its orbit ring.
+      const radius = 14 + idx * 6;
       const phase = idx * ((Math.PI * 2) / sections.length);
       const y = Math.sin(idx) * 2;
-      const targetPos = new THREE.Vector3(Math.cos(phase) * radius, y, Math.sin(phase) * radius);
+      const target = currentPos ?? new THREE.Vector3(Math.cos(phase) * radius, y, Math.sin(phase) * radius);
 
-      // 2. Animate Camera Target to look at the Galaxy
+      // --- CINEMATIC FLY-IN ---
+      // 1. Move focus to the galaxy
       gsap.to(controlsRef.current.target, {
-        x: targetPos.x,
-        y: targetPos.y,
-        z: targetPos.z,
-        duration: 2,
-        ease: "power2.inOut"
+        x: target.x,
+        y: target.y,
+        z: target.z,
+        duration: 2.5,
+        ease: "power3.inOut"
       });
 
-      // 3. Animate Camera Position to get close (FLYING IN)
-      // Offset: Position camera 8 units away from target, slightly up
-      const offset = targetPos.clone().normalize().multiplyScalar(8); // Closer distance!
-      const camPos = targetPos.clone().add(new THREE.Vector3(offset.x, 2, offset.z)); // Lower Y offset for drama
+      // 2. Move camera close (8 units away)
+      const offset = target.clone().normalize().multiplyScalar(8); 
+      const camPos = target.clone().add(new THREE.Vector3(offset.x, 2, offset.z)); 
 
       gsap.to(controlsRef.current.object.position, {
         x: camPos.x,
         y: camPos.y,
         z: camPos.z,
-        duration: 2,
-        ease: "power2.inOut"
+        duration: 2.5,
+        ease: "power3.inOut"
       });
     }
   };
@@ -605,21 +619,21 @@ export default function AnimatedPortfolio() {
     setView('galaxy');
     setPlanets([]);
     if (controlsRef.current) {
-      // Zoom out to wide view
+      // Zoom out to "Home" view
       gsap.to(controlsRef.current.target, {
         x: 0,
         y: 0,
         z: 0,
         duration: 2,
-        ease: "power2.inOut"
+        ease: "power3.inOut"
       });
 
       gsap.to(controlsRef.current.object.position, {
         x: 0,
-        y: 30,
-        z: 60,
+        y: 20, // Match Intro End Pos
+        z: 40, // Match Intro End Pos
         duration: 2,
-        ease: "power2.inOut"
+        ease: "power3.inOut"
       });
     }
   };
@@ -698,12 +712,14 @@ export default function AnimatedPortfolio() {
       </div>
 
       <Canvas
-        camera={{ position: [0, 20, 40], fov: 50 }}
+        camera={{ position: [0, 50, 150], fov: 50 }} // Initial pos handled by IntroCameraRig
         gl={{ antialias: true, alpha: true }}
       >
         <Suspense fallback={null}>
           <color attach="background" args={['#000000']} />
  
+           <IntroCameraRig /> {/* --- ADDED INTRO RIG --- */}
+
            <GalaxyScene 
              activeSection={activeSection} 
              onSectionClick={handleSectionClick} 
@@ -718,12 +734,10 @@ export default function AnimatedPortfolio() {
             enableZoom={true}
             enableRotate={true}
             maxDistance={80}
-            minDistance={15}
+            minDistance={8}
             maxPolarAngle={Math.PI / 1.5}
             minPolarAngle={Math.PI / 4}
-            // IMPORTANT: AutoRotate must be disabled when user is focused on a section
-            autoRotate={!activeSection} 
-            autoRotateSpeed={0.5}
+            autoRotate={false} // --- DISABLED AUTO ROTATE ---
           />
         </Suspense>
       </Canvas>
