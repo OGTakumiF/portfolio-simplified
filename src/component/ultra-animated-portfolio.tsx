@@ -263,9 +263,6 @@ function ParticleField() {
 
 // --- NEW COMPONENT: Real Space Background ---
 function BackgroundImage() {
-  // Using a high-quality space nebula texture from a reliable CDN
-  // Note: For the exact image you provided, you should download it,
-  // place it in your 'public' folder as 'background.jpg', and change this URL to "/background.jpg"
   const texture = useLoader(THREE.TextureLoader, "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=2048&auto=format&fit=crop");
   
   return (
@@ -512,9 +509,8 @@ function GalaxyScene({
       <ambientLight intensity={0.1} /> {/* Lower ambient so background pops */}
       <directionalLight position={[10, 10, 5]} intensity={1} />
       
-      {/* Replaced procedural background with the Image Sphere */}
       <BackgroundImage />
-      <ParticleField /> {/* Keep some floating particles for depth */}
+      <ParticleField /> 
 
       {view === 'galaxy' ? (
         <CentralStar />
@@ -537,7 +533,6 @@ function GalaxyScene({
         />
       ))}
 
-      {/* Kept some stars but further out */}
       <Stars radius={400} depth={50} count={2000} factor={4} saturation={0} fade speed={1} />
     </>
   );
@@ -565,12 +560,24 @@ export default function AnimatedPortfolio() {
       const y = 2;
       const target = currentPos ?? new THREE.Vector3(Math.cos(phase) * radius, y, Math.sin(phase) * radius);
 
+      // Cinematic Zoom-In
+      gsap.to(controlsRef.current.target, {
+        x: target.x,
+        y: target.y,
+        z: target.z,
+        duration: 2.5,
+        ease: "power3.inOut"
+      });
+
+      const offset = target.clone().normalize().multiplyScalar(20); 
+      const camPos = target.clone().add(new THREE.Vector3(offset.x, 10, offset.z)); 
+
       gsap.to(controlsRef.current.object.position, {
-        x: target.x * 0.5,
-        y: target.y + 10,
-        z: target.z + 20,
-        duration: 2,
-        ease: 'power2.inOut'
+        x: camPos.x,
+        y: camPos.y,
+        z: camPos.z,
+        duration: 2.5,
+        ease: "power3.inOut"
       });
     }
   };
@@ -585,12 +592,21 @@ export default function AnimatedPortfolio() {
     setView('galaxy');
     setPlanets([]);
     if (controlsRef.current) {
+      // Cinematic Zoom-Out
+      gsap.to(controlsRef.current.target, {
+        x: 0,
+        y: 0,
+        z: 0,
+        duration: 2,
+        ease: "power3.inOut"
+      });
+
       gsap.to(controlsRef.current.object.position, {
         x: 0,
         y: 30,
         z: 60,
         duration: 2,
-        ease: 'power2.inOut'
+        ease: "power3.inOut"
       });
     }
   };
