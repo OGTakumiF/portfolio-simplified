@@ -1,24 +1,24 @@
-import { Suspense, useRef, useState } from 'react';
+import { Suspense, useRef, useState, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { 
   Text, Float, MeshReflectorMaterial, Cylinder, Box, Sphere, 
-  OrbitControls, RoundedBox, CubicBezierLine, Environment
+  OrbitControls, RoundedBox, CubicBezierLine, Environment, Instance, Instances
 } from '@react-three/drei';
 import * as THREE from 'three';
 
 // --- DATA ---
 const sections = [
-  { id: 'engineering', title: 'ENGINEERING', color: '#22d3ee', description: "Rail & Infra" }, // Cyan
-  { id: 'music', title: 'MUSIC', color: '#f472b6', description: "Violin & Vocals" }, // Pink
-  { id: 'psychology', title: 'PSYCHOLOGY', color: '#f87171', description: "Mentorship" }, // Red
-  { id: 'motorsports', title: 'MOTORSPORTS', color: '#fbbf24', description: "Dynamics" }, // Amber
-  { id: 'archery', title: 'ARCHERY', color: '#34d399', description: "Discipline" }, // Emerald
-  { id: 'achievements', title: 'AWARDS', color: '#a78bfa', description: "Excellence" }, // Purple
+  { id: 'engineering', title: 'ENGINEERING', color: '#22d3ee', description: "Rail & Infra" },
+  { id: 'music', title: 'MUSIC', color: '#f472b6', description: "Violin & Vocals" },
+  { id: 'psychology', title: 'PSYCHOLOGY', color: '#f87171', description: "Mentorship" },
+  { id: 'motorsports', title: 'MOTORSPORTS', color: '#fbbf24', description: "Dynamics" },
+  { id: 'archery', title: 'ARCHERY', color: '#34d399', description: "Discipline" },
+  { id: 'achievements', title: 'AWARDS', color: '#a78bfa', description: "Excellence" },
 ];
 
 // --- HELPER COMPONENTS ---
 
-function Cable({ start, end, v1, v2, color = '#333' }: { start: [number, number, number], end: [number, number, number], v1: [number, number, number], v2: [number, number, number], color?: string }) {
+function Cable({ start, end, v1, v2, color = '#111' }: any) {
   return (
     <CubicBezierLine
       start={start}
@@ -26,8 +26,28 @@ function Cable({ start, end, v1, v2, color = '#333' }: { start: [number, number,
       midA={v1}
       midB={v2}
       color={color}
-      lineWidth={2}
+      lineWidth={1.5}
     />
+  );
+}
+
+// "Fake Bloom" Sprite - Adds a soft glow aura behind lights
+function Glow({ color, scale = 1, opacity = 0.5 }: { color: string, scale?: number, opacity?: number }) {
+  return (
+    <mesh>
+      <planeGeometry args={[scale, scale]} />
+      <meshBasicMaterial
+        color={color}
+        transparent
+        opacity={opacity}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+        side={THREE.DoubleSide}
+      >
+        {/* Simple gradient texture created programmatically would be ideal, 
+            but using a high-opacity center circle works for "bloom" */}
+      </meshBasicMaterial>
+    </mesh>
   );
 }
 
@@ -35,15 +55,16 @@ function Steam() {
   const steamRef = useRef<THREE.Group>(null);
   useFrame((state) => {
     if (steamRef.current) {
-      steamRef.current.children.forEach((child, i) => {
-        const mesh = child as THREE.Mesh;
-        mesh.position.y += 0.008 + (i * 0.0005);
-        mesh.position.x += Math.sin(state.clock.elapsedTime * 2 + i) * 0.003;
-        if (mesh.position.y > 1.8) {
-          mesh.position.y = 0;
-          mesh.material.opacity = 0.6;
+      steamRef.current.children.forEach((child: any, i) => {
+        child.position.y += 0.005 + (i * 0.0005);
+        child.position.x += Math.sin(state.clock.elapsedTime * 2 + i) * 0.002;
+        child.scale.setScalar(1 + child.position.y * 0.5); // Grow as it rises
+        if (child.position.y > 1.5) {
+          child.position.y = 0;
+          child.scale.setScalar(1);
+          child.material.opacity = 0.4;
         } else {
-          (mesh.material as THREE.MeshBasicMaterial).opacity -= 0.003;
+          child.material.opacity -= 0.002;
         }
       });
     }
@@ -51,9 +72,9 @@ function Steam() {
 
   return (
     <group ref={steamRef} position={[0, 0.8, 0]}>
-      {[...Array(5)].map((_, i) => (
-        <mesh key={i} position={[(Math.random() - 0.5) * 0.5, Math.random(), (Math.random() - 0.5) * 0.5]}>
-          <sphereGeometry args={[0.08, 8, 8]} />
+      {[...Array(6)].map((_, i) => (
+        <mesh key={i} position={[(Math.random() - 0.5) * 0.3, Math.random(), (Math.random() - 0.5) * 0.3]}>
+          <sphereGeometry args={[0.06, 8, 8]} />
           <meshBasicMaterial color="#fff" transparent opacity={0.4} />
         </mesh>
       ))}
@@ -61,106 +82,69 @@ function Steam() {
   );
 }
 
-// --- CHARACTERS (HUMANS) ---
+// --- CHARACTERS (IMPROVED) ---
 
-interface HumanProps {
-  position: [number, number, number];
-  rotation?: [number, number, number];
-  scale?: number;
-  role?: 'chef' | 'customer' | 'observer';
-  colors?: { skin: string; shirt: string; pants: string };
-}
-
-function Human({ position, rotation = [0, 0, 0], scale = 1, role = 'observer', colors = { skin: '#ffdbac', shirt: '#333', pants: '#222' } }: HumanProps) {
+function Human({ position, rotation = [0, 0, 0], scale = 1, role = 'observer', colors = { skin: '#ffdbac', shirt: '#333', pants: '#222' } }: any) {
   const isSitting = role === 'customer';
   
   return (
-    <group position={position} rotation={rotation} scale={scale}>
-      <Float speed={2} rotationIntensity={0.1} floatIntensity={0.1}>
-        {/* Head */}
-        <Sphere args={[0.25, 16, 16]} position={[0, 1.6, 0]}>
-          <meshStandardMaterial color={colors.skin} roughness={0.5} />
-        </Sphere>
+    <group position={position} rotation={rotation as any} scale={scale}>
+      <group position={[0, isSitting ? 0.6 : 1, 0]}> {/* Height adjustment */}
         
+        {/* Head */}
+        <mesh position={[0, 0.65, 0]}>
+          <sphereGeometry args={[0.22, 16, 16]} />
+          <meshStandardMaterial color={colors.skin} roughness={0.5} />
+        </mesh>
+
         {/* Chef Hat */}
         {role === 'chef' && (
-          <group position={[0, 1.8, 0]}>
-             {/* Hat Base */}
-             <Cylinder args={[0.22, 0.2, 0.15]} position={[0, 0.05, 0]}>
-                <meshStandardMaterial color="#fff" />
-             </Cylinder>
-             {/* Hat Top */}
-             <Cylinder args={[0.25, 0.22, 0.25]} position={[0, 0.25, 0]}>
-                <meshStandardMaterial color="#fff" />
-             </Cylinder>
+          <group position={[0, 0.82, 0]}>
+             <Cylinder args={[0.22, 0.2, 0.15]} position={[0, 0, 0]}><meshStandardMaterial color="#fff" /></Cylinder>
+             <Cylinder args={[0.25, 0.22, 0.25]} position={[0, 0.2, 0]}><meshStandardMaterial color="#fff" /></Cylinder>
           </group>
         )}
 
-        {/* Body (Shirt) */}
-        <RoundedBox args={[0.5, 0.7, 0.3]} radius={0.05} position={[0, 1, 0]}>
+        {/* Torso */}
+        <RoundedBox args={[0.45, 0.6, 0.25]} radius={0.05} position={[0, 0.1, 0]}>
           <meshStandardMaterial color={colors.shirt} />
         </RoundedBox>
-        {/* Apron for Chef */}
-        {role === 'chef' && (
-           <Box args={[0.52, 0.6, 0.05]} position={[0, 0.8, 0.16]}>
-              <meshStandardMaterial color="#eee" />
-           </Box>
-        )}
 
         {/* Arms */}
-        <group position={[0, 1, 0]}>
+        <group position={[0, 0.3, 0]}>
            {/* Left Arm */}
-           <RoundedBox args={[0.15, 0.6, 0.15]} position={[-0.35, 0, 0]} rotation={[0, 0, 0.1]}>
-              <meshStandardMaterial color={colors.shirt} />
-           </RoundedBox>
-           <Sphere args={[0.08]} position={[-0.38, -0.3, 0]}>
-              <meshStandardMaterial color={colors.skin} />
-           </Sphere>
-           
-           {/* Right Arm */}
-           <group position={[0.35, 0.2, 0]} rotation={[0, 0, -0.1]}>
-              <RoundedBox args={[0.15, 0.6, 0.15]} position={[0, -0.2, 0]} rotation={[role === 'customer' || role === 'chef' ? -0.5 : 0, 0, 0]}>
+           <group position={[-0.3, 0, 0]} rotation={[0, 0, role === 'chef' ? 0.5 : 0.1]}>
+              <RoundedBox args={[0.12, 0.5, 0.12]} radius={0.05} position={[0, -0.2, 0]}>
                  <meshStandardMaterial color={colors.shirt} />
               </RoundedBox>
-              <Sphere args={[0.08]} position={[0, -0.5, role === 'customer' || role === 'chef' ? 0.2 : 0]}>
-                 <meshStandardMaterial color={colors.skin} />
-              </Sphere>
+              <Sphere args={[0.07]} position={[0, -0.5, 0]}><meshStandardMaterial color={colors.skin} /></Sphere>
+           </group>
+           {/* Right Arm */}
+           <group position={[0.3, 0, 0]} rotation={[0, 0, role === 'chef' ? -0.5 : -0.1]}>
+              <RoundedBox args={[0.12, 0.5, 0.12]} radius={0.05} position={[0, -0.2, 0]}>
+                 <meshStandardMaterial color={colors.shirt} />
+              </RoundedBox>
+              <Sphere args={[0.07]} position={[0, -0.5, 0]}><meshStandardMaterial color={colors.skin} /></Sphere>
            </group>
         </group>
 
         {/* Legs */}
-        <group position={[0, 0.65, 0]}>
-           {isSitting ? (
-             // Sitting Legs
-             <group>
-               {/* Thighs */}
-               <RoundedBox args={[0.18, 0.4, 0.18]} position={[-0.15, -0.1, 0.15]} rotation={[-1.5, 0, -0.1]}>
-                  <meshStandardMaterial color={colors.pants} />
-               </RoundedBox>
-               <RoundedBox args={[0.18, 0.4, 0.18]} position={[0.15, -0.1, 0.15]} rotation={[-1.5, 0, 0.1]}>
-                  <meshStandardMaterial color={colors.pants} />
-               </RoundedBox>
-               {/* Shins */}
-               <RoundedBox args={[0.16, 0.4, 0.16]} position={[-0.15, -0.1, 0.35]} rotation={[0, 0, 0]}>
-                  <meshStandardMaterial color={colors.pants} />
-               </RoundedBox>
-               <RoundedBox args={[0.16, 0.4, 0.16]} position={[0.15, -0.1, 0.35]} rotation={[0, 0, 0]}>
-                  <meshStandardMaterial color={colors.pants} />
-               </RoundedBox>
-             </group>
-           ) : (
-             // Standing Legs
-             <group>
-               <RoundedBox args={[0.18, 0.7, 0.18]} position={[-0.15, -0.35, 0]}>
-                  <meshStandardMaterial color={colors.pants} />
-               </RoundedBox>
-               <RoundedBox args={[0.18, 0.7, 0.18]} position={[0.15, -0.35, 0]}>
-                  <meshStandardMaterial color={colors.pants} />
-               </RoundedBox>
-             </group>
-           )}
-        </group>
-      </Float>
+        {isSitting ? (
+           <group position={[0, -0.2, 0.1]}>
+              {/* Thighs */}
+              <RoundedBox args={[0.16, 0.4, 0.16]} position={[-0.12, 0, 0]} rotation={[-1.5, 0, 0]}><meshStandardMaterial color={colors.pants} /></RoundedBox>
+              <RoundedBox args={[0.16, 0.4, 0.16]} position={[0.12, 0, 0]} rotation={[-1.5, 0, 0]}><meshStandardMaterial color={colors.pants} /></RoundedBox>
+              {/* Shins (Dangling) */}
+              <RoundedBox args={[0.14, 0.4, 0.14]} position={[-0.12, -0.1, 0.2]} rotation={[0.2, 0, 0]}><meshStandardMaterial color={colors.pants} /></RoundedBox>
+              <RoundedBox args={[0.14, 0.4, 0.14]} position={[0.12, -0.1, 0.2]} rotation={[0.2, 0, 0]}><meshStandardMaterial color={colors.pants} /></RoundedBox>
+           </group>
+        ) : (
+           <group position={[0, -0.2, 0]}>
+              <RoundedBox args={[0.16, 0.7, 0.16]} position={[-0.12, -0.35, 0]}><meshStandardMaterial color={colors.pants} /></RoundedBox>
+              <RoundedBox args={[0.16, 0.7, 0.16]} position={[0.12, -0.35, 0]}><meshStandardMaterial color={colors.pants} /></RoundedBox>
+           </group>
+        )}
+      </group>
     </group>
   );
 }
@@ -169,19 +153,19 @@ function Human({ position, rotation = [0, 0, 0], scale = 1, role = 'observer', c
 
 function NeonFloor() {
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
       <planeGeometry args={[50, 50]} />
       <MeshReflectorMaterial
         blur={[300, 100]}
         resolution={1024}
         mixBlur={1}
-        mixStrength={80}
-        roughness={0.5} 
+        mixStrength={80} // High reflectivity
+        roughness={0.6} // Blurrier reflections
         depthScale={1.2}
         minDepthThreshold={0.4}
         maxDepthThreshold={1.4}
-        color="#101015"
-        metalness={0.8}
+        color="#080808"
+        metalness={0.6}
         mirror={0.7}
       />
     </mesh>
@@ -193,26 +177,32 @@ function SignPost({ activeId, onSectionSelect }: { activeId: string | null, onSe
 
   return (
     <group ref={groupRef} position={[-5, 0, 1]} rotation={[0, 0.4, 0]}>
-      <Cylinder args={[0.12, 0.12, 10, 8]} position={[0, 5, 0]}>
-        <meshStandardMaterial color="#444" roughness={0.6} />
+      <Cylinder args={[0.15, 0.15, 10, 8]} position={[0, 5, 0]}>
+        <meshStandardMaterial color="#2a2a30" roughness={0.3} metalness={0.5} />
       </Cylinder>
       
-      <Box args={[1, 0.6, 1]} position={[0, 0.3, 0]}>
-        <meshStandardMaterial color="#555" />
+      {/* Base */}
+      <Box args={[1.2, 0.4, 1.2]} position={[0, 0.2, 0]}>
+        <meshStandardMaterial color="#111" />
       </Box>
 
-      {/* Top Light Fixture */}
+      {/* Top Light */}
       <group position={[0, 9.8, 0]}>
-        <Box args={[0.4, 0.5, 0.4]}>
-           <meshStandardMaterial color="#222" />
-        </Box>
-        <pointLight intensity={3} color="#fff" distance={8} />
-        <Sphere args={[0.2]} position={[0, -0.2, 0]}>
+        <pointLight intensity={2} color="#fff" distance={8} />
+        <mesh>
+           <sphereGeometry args={[0.3]} />
            <meshBasicMaterial color="#fff" />
-        </Sphere>
+        </mesh>
+        {/* Fake Bloom Sprite */}
+        <group rotation={[0, 0, 0]}>
+           <mesh rotation={[0, 0, 0]}>
+              <planeGeometry args={[4, 4]} />
+              <meshBasicMaterial color="#fff" transparent opacity={0.15} depthWrite={false} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
+           </mesh>
+        </group>
       </group>
 
-      {/* The Signs */}
+      {/* Signs */}
       {sections.map((section, idx) => {
         const isLeft = idx % 2 === 0;
         const yPos = 8.5 - idx * 1.2;
@@ -234,26 +224,34 @@ function SignPost({ activeId, onSectionSelect }: { activeId: string | null, onSe
             onPointerOut={() => document.body.style.cursor = 'auto'}
           >
             <group position={[isLeft ? -1.6 : 1.6, 0, 0]}>
-              <Box args={[1.2, 0.1, 0.1]} position={[isLeft ? 0.6 : -0.6, 0, 0]}>
-                <meshStandardMaterial color="#333" />
+              <Box args={[1.2, 0.08, 0.08]} position={[isLeft ? 0.6 : -0.6, 0, 0]}>
+                <meshStandardMaterial color="#111" />
               </Box>
 
-              <RoundedBox args={[2.2, 0.7, 0.15]} radius={0.05} smoothness={4}>
+              <RoundedBox args={[2.4, 0.8, 0.1]} radius={0.02} smoothness={4}>
                 <meshStandardMaterial 
-                  color="#1a1a1a"
+                  color="#000"
                   emissive={section.color}
-                  emissiveIntensity={isActive ? 0.6 : 0.2}
+                  emissiveIntensity={isActive ? 0.5 : 0.1}
                   roughness={0.2}
                 />
               </RoundedBox>
 
-              <Box args={[2.25, 0.75, 0.14]}>
-                 <meshBasicMaterial color={isActive ? "#fff" : section.color} wireframe />
-              </Box>
+              {/* Glowing Border Tube */}
+              <group position={[0, 0, 0]}>
+                 <Box args={[2.45, 0.85, 0.08]}>
+                    <meshBasicMaterial color={isActive ? "#fff" : section.color} wireframe />
+                 </Box>
+                 {/* Back Glow Billboard */}
+                 <mesh position={[0, 0, -0.1]}>
+                    <planeGeometry args={[4, 2]} />
+                    <meshBasicMaterial color={section.color} transparent opacity={isActive ? 0.3 : 0.05} blending={THREE.AdditiveBlending} depthWrite={false} />
+                 </mesh>
+              </group>
 
               <Text
-                position={[0, 0, 0.09]}
-                fontSize={0.28}
+                position={[0, 0, 0.06]}
+                fontSize={0.25}
                 color={isActive ? "#fff" : section.color}
                 anchorX="center"
                 anchorY="middle"
@@ -274,46 +272,42 @@ function SignPost({ activeId, onSectionSelect }: { activeId: string | null, onSe
 function RamenStall() {
   return (
     <group position={[2.5, 0, -2]} rotation={[0, -0.5, 0]}>
-      {/* Base Platform */}
-      <Box args={[7, 0.5, 5]} position={[0, 0.25, 0]}>
-        <meshStandardMaterial color="#333" />
-      </Box>
-      {/* Main Container */}
-      <Box args={[6, 4.5, 3.5]} position={[0, 2.5, -0.5]}>
-        <meshStandardMaterial color="#444455" />
+      {/* Platform */}
+      <Box args={[7, 0.3, 5]} position={[0, 0.15, 0]}>
+        <meshStandardMaterial color="#222" />
       </Box>
       
-      {/* Awning */}
-      <group position={[0, 4.2, 1.8]} rotation={[0.2, 0, 0]}>
-        <Box args={[6.2, 0.2, 2]}>
-          <meshStandardMaterial color="#222" />
+      {/* Main Box */}
+      <Box args={[6, 4.5, 3.5]} position={[0, 2.5, -0.5]}>
+        <meshStandardMaterial color="#333" />
+      </Box>
+      
+      {/* Roof / Awning */}
+      <group position={[0, 4.5, 1.5]} rotation={[0.1, 0, 0]}>
+        <Box args={[6.4, 0.2, 2.5]}>
+          <meshStandardMaterial color="#1a1a1a" />
         </Box>
-        <Box args={[6.25, 0.21, 0.1]} position={[0, 0, 1]}>
-           <meshBasicMaterial color="#d946ef" />
+        {/* Vents on roof */}
+        <Box args={[1, 0.8, 1]} position={[1.5, 0.5, 0]}>
+           <meshStandardMaterial color="#444" />
         </Box>
+        <Cylinder args={[0.3, 0.3, 0.6]} position={[-1.5, 0.4, 0]}>
+           <meshStandardMaterial color="#555" />
+        </Cylinder>
       </group>
 
-      {/* Roof Detail */}
-      <group position={[1.5, 5, -0.5]}>
-         <Box args={[1.5, 1, 1.5]}>
-            <meshStandardMaterial color="#555" />
-         </Box>
-         <Cylinder args={[0.4, 0.4, 0.2, 16]} rotation={[0, 0, Math.PI/2]} position={[0.8, 0, 0]}>
-            <meshStandardMaterial color="#333" />
-         </Cylinder>
-      </group>
-
-      {/* Main Sign Board */}
-      <group position={[0, 5.5, 1]}>
-        <Box args={[5, 1.2, 0.2]}>
-           <meshStandardMaterial color="#111" />
+      {/* Main Neon Sign */}
+      <group position={[0, 5.8, 1]}>
+        <Box args={[5.2, 1.4, 0.2]}>
+           <meshStandardMaterial color="#000" />
         </Box>
-        <Box args={[5.1, 1.3, 0.15]}>
+        {/* Neon Border */}
+        <Box args={[5.3, 1.5, 0.1]}>
            <meshBasicMaterial color="#d946ef" toneMapped={false} />
         </Box>
         <Text
           position={[0, 0, 0.12]}
-          fontSize={0.6}
+          fontSize={0.65}
           color="#ff00ff"
           anchorX="center"
           anchorY="middle"
@@ -322,24 +316,29 @@ function RamenStall() {
           SEAN'S RAMEN
           <meshBasicMaterial color="#ff00ff" toneMapped={false} />
         </Text>
-        <pointLight intensity={4} color="#ff00ff" distance={8} decay={2} />
+        {/* Sign Glow */}
+        <mesh position={[0, 0, -0.5]}>
+           <planeGeometry args={[8, 4]} />
+           <meshBasicMaterial color="#d946ef" transparent opacity={0.2} blending={THREE.AdditiveBlending} depthWrite={false} />
+        </mesh>
+        <pointLight intensity={3} color="#d946ef" distance={10} decay={2} />
       </group>
 
-      {/* Counter */}
+      {/* Counter Area */}
       <Box args={[5.8, 1.1, 0.8]} position={[0, 0.8, 1.5]}>
-        <meshStandardMaterial color="#6d4c35" />
+        <meshStandardMaterial color="#5c4033" roughness={0.8} /> 
       </Box>
       <Box args={[6, 0.1, 1]} position={[0, 1.4, 1.5]}>
-        <meshStandardMaterial color="#a07040" />
+        <meshStandardMaterial color="#8b5a2b" roughness={0.5} />
       </Box>
 
-      {/* Noren */}
-      <group position={[0, 3.8, 1.3]}>
+      {/* Noren (Curtains) */}
+      <group position={[0, 4, 1.3]}>
          {[-2, -1, 0, 1, 2].map((x, i) => (
             <mesh key={i} position={[x, -0.4, 0]}>
-               <planeGeometry args={[0.9, 0.8]} />
-               <meshStandardMaterial color="#222233" side={THREE.DoubleSide} />
-               <Text position={[0, 0, 0.01]} fontSize={0.4} color="#fff">
+               <planeGeometry args={[0.95, 1]} />
+               <meshStandardMaterial color="#1e1e2e" side={THREE.DoubleSide} />
+               <Text position={[0, 0, 0.01]} fontSize={0.5} color="#fff">
                   {['ラ', 'ー', 'メ', 'ン', '店'][i]}
                </Text>
             </mesh>
@@ -347,99 +346,85 @@ function RamenStall() {
       </group>
 
       {/* Lanterns */}
-      <group position={[0, 3, 2]}>
+      <group position={[0, 3.2, 2]}>
          {[-2.2, 2.2].map((x, i) => (
             <group key={i} position={[x, 0, 0]}>
-               <Cylinder args={[0.3, 0.3, 0.8, 8]}>
-                  <meshStandardMaterial emissive="#fbbf24" emissiveIntensity={3} color="#fbbf24" toneMapped={false} />
+               <Cylinder args={[0.35, 0.35, 0.9, 16]}>
+                  <meshStandardMaterial emissive="#f59e0b" emissiveIntensity={2} color="#f59e0b" toneMapped={false} />
                </Cylinder>
-               <pointLight intensity={3} color="orange" distance={6} />
+               <pointLight intensity={3} color="#f59e0b" distance={5} />
+               {/* Lantern Glow */}
+               <mesh>
+                  <sphereGeometry args={[0.8]} />
+                  <meshBasicMaterial color="#f59e0b" transparent opacity={0.1} blending={THREE.AdditiveBlending} depthWrite={false} />
+               </mesh>
             </group>
          ))}
       </group>
 
-      {/* Bowls & Interior Light */}
+      {/* Bowls & Steam */}
       <group position={[0, 1.5, 1.5]}>
+         {/* Interior Warm Light */}
          <pointLight position={[0, 1, -1]} intensity={2} color="#fbbf24" distance={5} /> 
          <group position={[-1, 0, 0]}>
-            <Cylinder args={[0.2, 0.15, 0.2]}><meshStandardMaterial color="#222" /></Cylinder>
+            <Cylinder args={[0.25, 0.15, 0.25]}><meshStandardMaterial color="#111" /></Cylinder>
             <Steam />
          </group>
          <group position={[1, 0, 0]}>
-            <Cylinder args={[0.2, 0.15, 0.2]}><meshStandardMaterial color="#222" /></Cylinder>
+            <Cylinder args={[0.25, 0.15, 0.25]}><meshStandardMaterial color="#111" /></Cylinder>
             <Steam />
          </group>
       </group>
 
-      {/* Stools */}
-      <group position={[0, 0.5, 2.5]}>
-        {[-1.5, 0, 1.5].map((x, i) => (
-          <group key={i} position={[x, 0, 0]}>
-             <Cylinder args={[0.3, 0.3, 0.1, 16]} position={[0, 0.5, 0]}>
-                <meshStandardMaterial color="#a52a2a" />
-             </Cylinder>
-             <Cylinder args={[0.05, 0.05, 1]} position={[0, 0, 0]}>
-                <meshStandardMaterial color="#333" />
-             </Cylinder>
-             <Cylinder args={[0.25, 0.25, 0.05]} position={[0, -0.5, 0]}>
-                <meshStandardMaterial color="#333" />
-             </Cylinder>
-          </group>
-        ))}
-      </group>
-
-      {/* Menu Board */}
-      <group position={[3.2, 1.5, 1.5]} rotation={[0, -0.2, 0]}>
-         <Box args={[0.1, 2, 1.2]}>
+      {/* Menu Hologram */}
+      <group position={[3.2, 1.5, 1.5]} rotation={[0, -0.3, 0]}>
+         <Box args={[0.1, 2.2, 1.4]} position={[0, 0, 0]}>
             <meshStandardMaterial color="#111" />
          </Box>
          <mesh position={[-0.06, 0, 0]} rotation={[0, -Math.PI/2, 0]}>
-            <planeGeometry args={[1, 1.8]} />
-            <meshBasicMaterial color="#06b6d4" transparent opacity={0.3} side={THREE.DoubleSide} />
+            <planeGeometry args={[1.2, 2]} />
+            <meshBasicMaterial color="#22d3ee" transparent opacity={0.2} side={THREE.DoubleSide} />
          </mesh>
-         <Text 
-            position={[-0.07, 0.6, 0]} 
-            rotation={[0, -Math.PI/2, 0]}
-            fontSize={0.2} 
-            color="#06b6d4"
-         >
-            MENU
-         </Text>
-         <Text 
-            position={[-0.07, 0, 0]} 
-            rotation={[0, -Math.PI/2, 0]}
-            fontSize={0.1} 
-            color="#fff"
-            maxWidth={0.9}
-            textAlign="center"
-            lineHeight={1.5}
-         >
-            {"Ramen.....$12\nGyoza.....$6\nSake......$8"}
+         <Text position={[-0.08, 0.8, 0]} rotation={[0, -Math.PI/2, 0]} fontSize={0.25} color="#22d3ee">MENU</Text>
+         <Text position={[-0.08, 0, 0]} rotation={[0, -Math.PI/2, 0]} fontSize={0.12} color="#fff" maxWidth={1}>
+            {"Ramen.....$12\nGyoza.....$6\nSake......$8\n\n[Click Signs\nto Order]"}
          </Text>
       </group>
 
-      {/* --- HUMANS (CHARACTERS) --- */}
-      {/* 1. The Chef (Inside, standing) */}
+      {/* --- CHARACTERS --- */}
+      {/* 1. The Chef (Standing) */}
       <Human 
-        position={[0, 1.2, 0.5]} 
+        position={[0, 1.5, 0]} 
         scale={0.9} 
         role="chef" 
         colors={{ skin: '#f5d0b0', shirt: '#fff', pants: '#222' }} 
       /> 
       
-      {/* 2. The Customer (On Stool, sitting) */}
+      {/* 2. The Customer (Sitting) */}
+      <group position={[-1.5, 0, 2.5]}>
+         {/* Stool */}
+         <Cylinder args={[0.3, 0.3, 0.1, 16]} position={[0, 1, 0]}><meshStandardMaterial color="#8b0000" /></Cylinder>
+         <Cylinder args={[0.05, 0.05, 1]} position={[0, 0.5, 0]}><meshStandardMaterial color="#333" /></Cylinder>
+         {/* Human */}
+         <Human 
+            position={[0, 1.1, 0]} 
+            rotation={[0, 0.5, 0]} 
+            scale={0.9} 
+            role="customer"
+            colors={{ skin: '#8d5524', shirt: '#f59e0b', pants: '#1e3a8a' }} 
+         />
+      </group>
+
+      {/* 3. Empty Stool */}
+      <group position={[1.5, 0, 2.5]}>
+         <Cylinder args={[0.3, 0.3, 0.1, 16]} position={[0, 1, 0]}><meshStandardMaterial color="#8b0000" /></Cylinder>
+         <Cylinder args={[0.05, 0.05, 1]} position={[0, 0.5, 0]}><meshStandardMaterial color="#333" /></Cylinder>
+      </group>
+
+      {/* 4. The Observer (Standing) */}
       <Human 
-        position={[-1.5, 1.1, 2.5]} 
-        rotation={[0, 0.5, 0]} 
-        scale={0.9} 
-        role="customer"
-        colors={{ skin: '#8d5524', shirt: '#f59e0b', pants: '#1e3a8a' }} 
-      />
-      
-      {/* 3. The Observer (Near Signpost, standing) */}
-      <Human 
-        position={[-3, 0.5, 3]} 
-        rotation={[0, -0.8, 0]} 
+        position={[-3.5, 0, 3]} 
+        rotation={[0, -0.5, 0]} 
         scale={1} 
         role="observer"
         colors={{ skin: '#e0ac69', shirt: '#06b6d4', pants: '#374151' }} 
@@ -452,9 +437,9 @@ function RamenStall() {
 function Wires() {
   return (
     <group>
-       <Cable start={[-5, 9, 1]} end={[2.5, 5.5, -2.5]} v1={[-2, 7, 0]} v2={[0, 6, -1]} color="#555" />
-       <Cable start={[-5, 8.5, 1]} end={[2.5, 5.5, -1.5]} v1={[-2, 6, 0]} v2={[0, 5, 0]} color="#555" />
-       <Cable start={[0, 6, -2]} end={[5, 6, -2]} v1={[1, 4, -2]} v2={[4, 5, -2]} color="#444" />
+       <Cable start={[-5, 9, 1]} end={[2.5, 5.5, -2.5]} v1={[-2, 7, 0]} v2={[0, 6, -1]} color="#222" />
+       <Cable start={[-5, 8.5, 1]} end={[2.5, 5.5, -1.5]} v1={[-2, 6, 0]} v2={[0, 5, 0]} color="#222" />
+       <Cable start={[0, 6, -2]} end={[5, 6, -2]} v1={[1, 4, -2]} v2={[4, 5, -2]} color="#222" />
     </group>
   );
 }
@@ -465,7 +450,6 @@ function CameraRig({ targetPosition }: { targetPosition: THREE.Vector3 | null })
   useFrame((state, delta) => {
     const defaultPos = new THREE.Vector3(0, 3, 14); 
     const focusPos = targetPosition ? new THREE.Vector3(targetPosition.x - 2, targetPosition.y + 1, 8) : defaultPos;
-    
     state.camera.position.lerp(focusPos, 2 * delta);
     
     const defaultTarget = new THREE.Vector3(0, 3, 0);
@@ -497,7 +481,7 @@ export default function CyberpunkScene() {
   const activeSectionData = sections.find(s => s.id === activeSectionId);
 
   return (
-    <div className="relative w-full h-screen bg-[#0b0b15] overflow-hidden font-sans">
+    <div className="relative w-full h-screen bg-[#050505] overflow-hidden font-sans">
       {/* UI Overlay */}
       {activeSectionData && (
         <div className="absolute top-1/2 right-4 md:right-20 -translate-y-1/2 z-10 max-w-sm md:max-w-md w-full animate-fade-in pointer-events-none">
@@ -549,35 +533,37 @@ export default function CyberpunkScene() {
 
       <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 3, 14], fov: 45 }}>
         <Suspense fallback={null}>
-          {/* Environment Lighting */}
-          <Environment preset="city" environmentIntensity={0.5} />
+          {/* Environment fills the darkness */}
+          <Environment preset="city" environmentIntensity={0.6} />
           
-          <fog attach="fog" args={['#0b0b15', 12, 50]} />
-          <color attach="background" args={['#0b0b15']} />
+          <fog attach="fog" args={['#050505', 10, 40]} />
+          <color attach="background" args={['#050505']} />
 
           <CameraRig targetPosition={cameraTarget} />
           <OrbitControls 
             makeDefault
             enablePan={false} 
-            maxPolarAngle={Math.PI / 2 - 0.02}
+            maxPolarAngle={Math.PI / 2 - 0.05}
             minPolarAngle={Math.PI / 3}
             minDistance={6}
-            maxDistance={20}
+            maxDistance={25}
           />
 
-          {/* Boosted Lights */}
-          <ambientLight intensity={0.5} color="#a78bfa" />
-          <hemisphereLight args={['#d946ef', '#0ea5e9', 0.6]} /> 
+          {/* --- LIGHTING (Boosted) --- */}
+          <ambientLight intensity={0.4} color="#a78bfa" />
+          <hemisphereLight args={['#d946ef', '#0ea5e9', 0.5]} /> 
 
+          {/* Main Area Spotlight */}
           <spotLight 
             position={[5, 12, 5]} 
-            angle={0.4} 
+            angle={0.45} 
             penumbra={0.5} 
-            intensity={5} 
+            intensity={4} 
             color="#f0abfc" 
             castShadow 
           />
-          <spotLight position={[-6, 10, 5]} angle={0.3} intensity={4} color="#22d3ee" />
+          {/* Signpost Fill */}
+          <pointLight position={[-6, 8, 3]} intensity={3} color="#22d3ee" distance={10} />
 
           <SignPost activeId={activeSectionId} onSectionSelect={handleSectionSelect} />
           <RamenStall />
@@ -592,7 +578,7 @@ export default function CyberpunkScene() {
              <Box args={[8, 18, 8]} position={[10, 9, 2]}>
                <meshStandardMaterial color="#111" />
              </Box>
-             {[...Array(15)].map((_, i) => (
+             {[...Array(20)].map((_, i) => (
                 <mesh key={i} position={[-10 + (Math.random() > 0.5 ? 3.1 : -3.1), Math.random() * 15 + 2, Math.random() * 4 - 2]}>
                    <planeGeometry args={[0.3, 0.6]} />
                    <meshBasicMaterial color={Math.random() > 0.8 ? "#ef4444" : "#fef08a"} opacity={0.8} transparent />
