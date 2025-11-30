@@ -1,5 +1,5 @@
-import { Suspense, useRef, useState, useMemo } from 'react';
-import { Canvas, useFrame, useLoader } from '@react-three/fiber';
+import { Suspense, useRef, useState, useMemo, useEffect } from 'react';
+import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
 import { Text, Stars, OrbitControls, Environment, Sparkles, Trail, Sphere, MeshDistortMaterial } from '@react-three/drei';
 import {
   Menu, X, Zap, Music, Heart, Target, Trophy, Briefcase, ArrowRight, Sparkles as SparklesIcon, ArrowLeft
@@ -272,7 +272,7 @@ function BackgroundImage() {
         map={texture} 
         side={THREE.BackSide} 
         transparent={true}
-        opacity={0.6} // Slight opacity to blend with the black background
+        opacity={0.6} 
       />
     </mesh>
   );
@@ -358,6 +358,7 @@ function OrbitingSystem({ section, onClick, isActive, orbit }: {
   orbit?: { radius: number; speed: number; phase: number; y?: number };
 }) {
   const groupRef = useRef<THREE.Group>(null);
+  const [hovered, setHovered] = useState(false);
   
   useFrame((state) => {
     if (groupRef.current && orbit) {
@@ -380,10 +381,16 @@ function OrbitingSystem({ section, onClick, isActive, orbit }: {
           e.stopPropagation();
           onClick(groupRef.current ? groupRef.current.position.clone() : new THREE.Vector3(...section.position));
         }}
-        onPointerOver={() => document.body.style.cursor = 'pointer'}
-        onPointerOut={() => document.body.style.cursor = 'auto'}
+        onPointerOver={() => {
+          document.body.style.cursor = 'pointer';
+          setHovered(true);
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = 'auto';
+          setHovered(false);
+        }}
       >
-        <sphereGeometry args={[2.5]} />
+        <sphereGeometry args={[3]} /> {/* Larger hit area */}
         <meshBasicMaterial color="red" />
       </mesh>
 
@@ -392,11 +399,11 @@ function OrbitingSystem({ section, onClick, isActive, orbit }: {
         <meshBasicMaterial color={section.color} transparent opacity={0.1} side={THREE.DoubleSide} />
       </mesh>
 
-      <SpiralGalaxy color={section.color} radius={3} />
+      <SpiralGalaxy color={section.color} radius={hovered ? 3.5 : 3} />
 
       <Text
         position={[0, 3.5, 0]}
-        fontSize={0.8}
+        fontSize={hovered ? 1 : 0.8}
         color="white"
         anchorX="center"
         anchorY="middle"
@@ -506,7 +513,7 @@ function GalaxyScene({
 }) {
   return (
     <>
-      <ambientLight intensity={0.1} /> {/* Lower ambient so background pops */}
+      <ambientLight intensity={0.1} /> 
       <directionalLight position={[10, 10, 5]} intensity={1} />
       
       <BackgroundImage />
@@ -554,30 +561,36 @@ export default function AnimatedPortfolio() {
     setPlanets(section.content.planets);
 
     if (controlsRef.current) {
+      // **CINEMATIC FLY-IN LOGIC**
+      // 1. Calculate where the planet is right now
       const idx = sections.findIndex((s) => s.id === section.id);
-      const radius = 10 + idx * 4;
+      const radius = 14 + idx * 6; // Must match galaxy scene orbit radius
+      // NOTE: For a truly perfect fly-in to a moving object, we'd need to freeze time or track it.
+      // Approximation: We fly to a point on its orbit ring.
       const phase = idx * ((Math.PI * 2) / sections.length);
-      const y = 2;
-      const target = currentPos ?? new THREE.Vector3(Math.cos(phase) * radius, y, Math.sin(phase) * radius);
+      const y = Math.sin(idx) * 2;
+      const targetPos = new THREE.Vector3(Math.cos(phase) * radius, y, Math.sin(phase) * radius);
 
-      // Cinematic Zoom-In
+      // 2. Animate Camera Target to look at the Galaxy
       gsap.to(controlsRef.current.target, {
-        x: target.x,
-        y: target.y,
-        z: target.z,
-        duration: 2.5,
-        ease: "power3.inOut"
+        x: targetPos.x,
+        y: targetPos.y,
+        z: targetPos.z,
+        duration: 2,
+        ease: "power2.inOut"
       });
 
-      const offset = target.clone().normalize().multiplyScalar(20); 
-      const camPos = target.clone().add(new THREE.Vector3(offset.x, 10, offset.z)); 
+      // 3. Animate Camera Position to get close (FLYING IN)
+      // Offset: Position camera 8 units away from target, slightly up
+      const offset = targetPos.clone().normalize().multiplyScalar(8); // Closer distance!
+      const camPos = targetPos.clone().add(new THREE.Vector3(offset.x, 2, offset.z)); // Lower Y offset for drama
 
       gsap.to(controlsRef.current.object.position, {
         x: camPos.x,
         y: camPos.y,
         z: camPos.z,
-        duration: 2.5,
-        ease: "power3.inOut"
+        duration: 2,
+        ease: "power2.inOut"
       });
     }
   };
@@ -592,13 +605,13 @@ export default function AnimatedPortfolio() {
     setView('galaxy');
     setPlanets([]);
     if (controlsRef.current) {
-      // Cinematic Zoom-Out
+      // Zoom out to wide view
       gsap.to(controlsRef.current.target, {
         x: 0,
         y: 0,
         z: 0,
         duration: 2,
-        ease: "power3.inOut"
+        ease: "power2.inOut"
       });
 
       gsap.to(controlsRef.current.object.position, {
@@ -606,7 +619,7 @@ export default function AnimatedPortfolio() {
         y: 30,
         z: 60,
         duration: 2,
-        ease: "power3.inOut"
+        ease: "power2.inOut"
       });
     }
   };
@@ -708,7 +721,8 @@ export default function AnimatedPortfolio() {
             minDistance={15}
             maxPolarAngle={Math.PI / 1.5}
             minPolarAngle={Math.PI / 4}
-            autoRotate={!activeSection}
+            // IMPORTANT: AutoRotate must be disabled when user is focused on a section
+            autoRotate={!activeSection} 
             autoRotateSpeed={0.5}
           />
         </Suspense>
