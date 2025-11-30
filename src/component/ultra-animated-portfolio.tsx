@@ -89,16 +89,15 @@ function AE86({ position, rotation }: any) {
       <Wheel position={[-0.75, 0.35, -1.3]} />
       <Wheel position={[0.75, 0.35, -1.3]} />
 
-      {/* Side Decal Text */}
+      {/* Side Decal Text - Default Font to avoid loading errors */}
       <Text 
         position={[0.92, 0.7, 0.5]} 
         rotation={[0, Math.PI / 2, 0]} 
         fontSize={0.15} 
         color="#111"
-        font="https://fonts.gstatic.com/s/notosansjp/v52/-F6jfjtqLzI2JPCgQBnw7HFQggM.woff" // Noto Sans JP
         anchorX="center"
       >
-        藤原とうふ店 (自家用)
+        FUJIWARA TOFU
       </Text>
     </group>
   );
@@ -202,16 +201,17 @@ function UtilityPole({ activeId, onSectionSelect }: { activeId: string | null, o
         <Box args={[0.8, 0.3, 0.4]} position={[3, -0.1, 0]}>
            <meshStandardMaterial color="#ddd" />
         </Box>
-        <pointLight position={[3, -0.5, 0]} color="#ffaa55" intensity={5} distance={15} />
+        <pointLight position={[3, -0.5, 0]} color="#ffaa55" intensity={10} distance={25} />
         <mesh position={[3, -0.25, 0]} rotation={[Math.PI, 0, 0]}>
            <coneGeometry args={[0.5, 1, 32, 1, true]} />
-           <meshBasicMaterial color="#ffaa55" transparent opacity={0.3} side={THREE.DoubleSide} />
+           <meshBasicMaterial color="#ffaa55" transparent opacity={0.5} side={THREE.DoubleSide} />
         </mesh>
       </group>
 
       {/* Signs (Attached to pole) */}
       {sections.map((section, idx) => {
         const yPos = 8 - idx * 1.1;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const isActive = activeId === section.id;
 
         return (
@@ -235,7 +235,7 @@ function UtilityPole({ activeId, onSectionSelect }: { activeId: string | null, o
                <meshStandardMaterial color={section.color} />
             </Box>
 
-            {/* Text (Vertical rotation to match sign) */}
+            {/* Text */}
             <Text
               position={[0.16, 0, 1.2]}
               rotation={[0, Math.PI / 2, 0]}
@@ -301,11 +301,11 @@ function TofuShop() {
          <Text 
             position={[0, 0.06, 0.4]} 
             rotation={[-Math.PI/2, 0, 0]} 
-            fontSize={0.4} 
+            fontSize={0.3} 
             color="#fff"
-            font="https://fonts.gstatic.com/s/notosansjp/v52/-F6jfjtqLzI2JPCgQBnw7HFQggM.woff"
+            fontWeight="bold"
          >
-            藤原とうふ店 (自家用)
+            FUJIWARA TOFU SHOP
          </Text>
       </group>
 
@@ -335,7 +335,8 @@ function TofuShop() {
          <Box args={[0.8, 1.2, 0.1]} position={[0, 0.2, 0.41]}>
             <meshBasicMaterial color="#cc0000" /> {/* Coke red */}
          </Box>
-         <pointLight color="#fff" intensity={1} distance={3} position={[0, 0.5, 1]} />
+         {/* Vending Machine Light */}
+         <pointLight color="#fff" intensity={2} distance={5} position={[0, 0.5, 1]} />
       </group>
 
     </group>
@@ -355,7 +356,7 @@ function CameraRig({ targetPosition }: { targetPosition: THREE.Vector3 | null })
   const { camera, controls } = useThree<any>();
   
   useFrame((state, delta) => {
-    const defaultPos = new THREE.Vector3(-8, 3, 12); // Lower, street-level angle
+    const defaultPos = new THREE.Vector3(-8, 3, 12); 
     const focusPos = targetPosition ? new THREE.Vector3(targetPosition.x - 3, targetPosition.y + 1, 8) : defaultPos;
     
     state.camera.position.lerp(focusPos, 2 * delta);
@@ -441,8 +442,10 @@ export default function FujiwaraScene() {
 
       <Canvas shadows dpr={[1, 2]} camera={{ position: [-8, 3, 12], fov: 45 }}>
         <Suspense fallback={null}>
-          <Environment preset="night" environmentIntensity={0.5} />
-          <fog attach="fog" args={['#111', 10, 40]} />
+          <Environment preset="night" environmentIntensity={0.8} />
+          
+          {/* Pushed fog further back so scene isn't hidden */}
+          <fog attach="fog" args={['#111', 30, 90]} />
           <color attach="background" args={['#111']} />
 
           <CameraRig targetPosition={cameraTarget} />
@@ -455,9 +458,15 @@ export default function FujiwaraScene() {
             maxDistance={25}
           />
 
-          {/* Moonlight */}
-          <directionalLight position={[10, 10, 5]} intensity={0.5} color="#aaddff" />
-          <ambientLight intensity={0.2} color="#222" />
+          {/* Moonlight - Strong Directional Light */}
+          <directionalLight 
+            position={[10, 10, 5]} 
+            intensity={2} 
+            color="#aaddff" 
+            castShadow 
+          />
+          {/* Ambient Fill */}
+          <ambientLight intensity={0.8} color="#444" />
 
           {/* Scene Components */}
           <UtilityPole activeId={activeSectionId} onSectionSelect={handleSectionSelect} />
