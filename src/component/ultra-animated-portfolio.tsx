@@ -1,6 +1,6 @@
-import { Suspense, useRef, useState } from 'react';
+import { Suspense, useRef, useState, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Text, Float, Stars, OrbitControls, Environment, Sparkles, Trail, Sphere, MeshDistortMaterial } from '@react-three/drei';
+import { Text, Stars, OrbitControls, Environment, Sparkles, Trail, Sphere, MeshDistortMaterial } from '@react-three/drei';
 import {
   Menu, X, Zap, Music, Heart, Target, Trophy, Briefcase, ArrowRight, Sparkles as SparklesIcon, ArrowLeft
 } from 'lucide-react';
@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import gsap from 'gsap';
 
 // --- SHADERS ---
+// Simple glow shader for the galaxy cores
 const vertexShader = `
   varying vec3 vNormal;
   void main() {
@@ -24,7 +25,6 @@ const fragmentShader = `
     gl_FragColor = vec4( glowColor, 1.0 ) * intensity * 0.8;
   }
 `;
-// --- END OF SHADERS ---
 
 interface Planet {
   id: string;
@@ -262,16 +262,93 @@ function ParticleField() {
   );
 }
 
+// --- NEW COMPONENT: Procedural Spiral Galaxy ---
+function SpiralGalaxy({ color, radius = 2 }: { color: string, radius?: number }) {
+  const pointsRef = useRef<THREE.Points>(null);
+  const galaxyParameters = useMemo(() => {
+    const count = 1500; // Number of stars per galaxy
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const galaxyColor = new THREE.Color(color);
+
+    for(let i = 0; i < count; i++) {
+      const i3 = i * 3;
+      // Spiral radius
+      const r = Math.random() * radius + 0.5; 
+      // Spiral angle (3 arms)
+      const spinAngle = r * 5;
+      const branchAngle = (i % 3) * ((Math.PI * 2) / 3);
+      
+      const randomX = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 0.3 * r;
+      const randomY = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 0.3 * r;
+      const randomZ = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 0.3 * r;
+
+      positions[i3] = Math.cos(branchAngle + spinAngle) * r + randomX;
+      positions[i3 + 1] = randomY * 0.5; // Flattened galaxy
+      positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * r + randomZ;
+
+      // Color mixed with white center
+      const mixedColor = galaxyColor.clone().lerp(new THREE.Color("white"), 1 / r);
+      colors[i3] = mixedColor.r;
+      colors[i3 + 1] = mixedColor.g;
+      colors[i3 + 2] = mixedColor.b;
+    }
+    return { positions, colors };
+  }, [color, radius]);
+
+  useFrame((state) => {
+    if (pointsRef.current) {
+      pointsRef.current.rotation.y += 0.005; // Rotate galaxy slowly
+    }
+  });
+
+  return (
+    <group>
+      {/* The Spiral Stars */}
+      <points ref={pointsRef}>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            count={galaxyParameters.positions.length / 3}
+            array={galaxyParameters.positions}
+            itemSize={3}
+          />
+          <bufferAttribute
+            attach="attributes-color"
+            count={galaxyParameters.colors.length / 3}
+            array={galaxyParameters.colors}
+            itemSize={3}
+          />
+        </bufferGeometry>
+        <pointsMaterial
+          size={0.15}
+          sizeAttenuation={true}
+          depthWrite={false}
+          vertexColors={true}
+          blending={THREE.AdditiveBlending}
+          transparent={true}
+          opacity={0.8}
+        />
+      </points>
+      
+      {/* Central Core Glow */}
+      <mesh>
+        <sphereGeometry args={[0.6, 16, 16]} />
+        <meshBasicMaterial color={color} transparent opacity={0.8} blur={0.5} />
+      </mesh>
+      <pointLight distance={10} intensity={2} color={color} />
+    </group>
+  );
+}
+
 function OrbitingSystem({ section, onClick, isActive, orbit }: {
   section: Section;
   onClick: (currentPos: THREE.Vector3) => void;
   isActive: boolean;
   orbit?: { radius: number; speed: number; phase: number; y?: number };
 }) {
-  const meshRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
-  const [hovered, setHovered] = useState(false);
-
+  
   useFrame((state) => {
     if (groupRef.current && orbit) {
       const angle = state.clock.elapsedTime * orbit.speed + orbit.phase;
@@ -282,43 +359,32 @@ function OrbitingSystem({ section, onClick, isActive, orbit }: {
         Math.sin(angle) * orbit.radius
       );
     }
-
-    if (meshRef.current) {
-      meshRef.current.rotation.x += 0.01;
-      meshRef.current.rotation.y += 0.015;
-      
-      const scale = hovered || isActive ? 1.4 : 1;
-      const targetScale = new THREE.Vector3(scale, scale, scale);
-      meshRef.current.scale.lerp(targetScale, 0.15);
-    }
   });
 
   return (
     <group ref={groupRef} position={section.position}>
+      {/* Invisible Sphere for easier clicking */}
+      <mesh 
+        visible={false} 
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick(groupRef.current ? groupRef.current.position.clone() : new THREE.Vector3(...section.position));
+        }}
+        onPointerOver={() => document.body.style.cursor = 'pointer'}
+        onPointerOut={() => document.body.style.cursor = 'auto'}
+      >
+        <sphereGeometry args={[2.5]} />
+        <meshBasicMaterial color="red" />
+      </mesh>
+
       {/* Orbit Trail Ring */}
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[3.2, 3.3, 64]} />
-        <meshBasicMaterial color={section.color} transparent opacity={0.3} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={section.color} transparent opacity={0.1} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* The Planet/System */}
-      <mesh
-        ref={meshRef}
-        onClick={() => onClick(groupRef.current ? groupRef.current.position.clone() : new THREE.Vector3(...section.position))}
-        onPointerOver={() => setHovered(true)}
-        onPointerOut={() => setHovered(false)}
-      >
-        <icosahedronGeometry args={[2, 4]} />
-        <MeshDistortMaterial
-          color={section.color}
-          emissive={section.color}
-          emissiveIntensity={isActive ? 1 : 0.4} // Reduced intensity so they don't outshine the sun
-          roughness={0.2}
-          metalness={0.8}
-          distort={0.4}
-          speed={3}
-        />
-      </mesh>
+      {/* REPLACED: Planet Mesh -> Spiral Galaxy */}
+      <SpiralGalaxy color={section.color} radius={3} />
 
       {/* Label */}
       <Text
@@ -346,22 +412,21 @@ function CentralStar({ section }: { section?: Section }) {
   });
 
   const title = section ? section.title : 'Sean Ogta Goh';
-  // Sun Colors
   const color = section ? section.color : '#fbbf24'; 
   const emissive = section ? section.color : '#d97706'; 
 
   return (
     <group position={[0, 0, 0]}>
-      {/* Core Sun - Made brighter than everything else */}
+      {/* Core Sun - Galactic Center */}
       <mesh>
         <sphereGeometry args={[4.5, 64, 64]} />
         <MeshDistortMaterial
           color={color}
           emissive={emissive}
-          emissiveIntensity={3} // Very bright!
+          emissiveIntensity={3} 
           roughness={0}
           metalness={0.2}
-          distort={0.3} // Subtle heat distortion
+          distort={0.3} 
           speed={2}
         />
       </mesh>
@@ -372,7 +437,6 @@ function CentralStar({ section }: { section?: Section }) {
         <meshBasicMaterial color={emissive} transparent opacity={0.1} wireframe />
       </mesh>
 
-      {/* Internal Light source to illuminate nearby objects */}
       <pointLight intensity={5} distance={50} color={color} />
 
       <Text
@@ -391,7 +455,6 @@ function CentralStar({ section }: { section?: Section }) {
   );
 }
 
-// Previously "SolarSystemView" - now displays the specific items of a section
 function SystemDetails({ activeSection, planets, onPlanetClick }: { activeSection: Section, planets: Planet[], onPlanetClick: (planet: Planet) => void }) {
   return (
     <group>
@@ -456,10 +519,10 @@ function GalaxyScene({
           onClick={(pos) => onSectionClick(section, pos)}
           isActive={activeSection?.id === section.id}
           orbit={{
-            radius: 12 + idx * 5,
-            speed: 0.15 + idx * 0.01, // Slight variance in speed
+            radius: 14 + idx * 6, // Spaced out more for galaxies
+            speed: 0.1 + idx * 0.01,
             phase: idx * ((Math.PI * 2) / sections.length),
-            y: Math.sin(idx) * 2 // Mild vertical variation
+            y: Math.sin(idx) * 2 
           }}
         />
       ))}
@@ -514,8 +577,8 @@ export default function AnimatedPortfolio() {
     if (controlsRef.current) {
       gsap.to(controlsRef.current.object.position, {
         x: 0,
-        y: 20,
-        z: 40,
+        y: 30, // Higher view to see galaxies better
+        z: 60, // Further back
         duration: 2,
         ease: 'power2.inOut'
       });
@@ -590,7 +653,7 @@ export default function AnimatedPortfolio() {
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40">
         <div className="text-center space-y-3">
           <p className="text-white/70 text-sm bg-slate-900/80 backdrop-blur-md px-6 py-3 rounded-full border border-slate-700/50 font-medium">
-            🌌 You are the Central Star • Orbiting systems are your Skills • Click to Explore
+            🌌 You are the Central Star • Orbiting Galaxies are your Skills • Click to Explore
           </p>
         </div>
       </div>
