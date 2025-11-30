@@ -215,43 +215,46 @@ const sections: Section[] = [
 
 function ParticleField() {
   const particles = useRef<THREE.Points>(null);
-  
+  const particleCount = 3000;
+
   useFrame((state) => {
     if (particles.current) {
-      // Very slow, ambient rotation
-      particles.current.rotation.y = state.clock.elapsedTime * 0.02;
+      particles.current.rotation.x = state.clock.elapsedTime * 0.0001;
+      particles.current.rotation.y = state.clock.elapsedTime * 0.0002;
+      
+      const positions = particles.current.geometry.attributes.position.array as Float32Array;
+      for (let i = 0; i < positions.length; i += 3) {
+        positions[i + 1] += Math.sin(state.clock.elapsedTime + positions[i]) * 0.001;
+      }
+      particles.current.geometry.attributes.position.needsUpdate = true;
     }
   });
 
-  const geometry = useMemo(() => {
-    const geo = new THREE.BufferGeometry();
-    const count = 3000;
-    const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
+  const geometry = new THREE.BufferGeometry();
+  const positions = new Float32Array(particleCount * 3);
+  const colors = new Float32Array(particleCount * 3);
 
-    for (let i = 0; i < count * 3; i += 3) {
-      // Spread particles wide
-      positions[i] = (Math.random() - 0.5) * 400;
-      positions[i + 1] = (Math.random() - 0.5) * 400;
-      positions[i + 2] = (Math.random() - 0.5) * 400;
-      
-      colors[i] = 1;
-      colors[i + 1] = 1;
-      colors[i + 2] = 1;
-    }
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    return geo;
-  }, []);
+  for (let i = 0; i < particleCount * 3; i += 3) {
+    positions[i] = (Math.random() - 0.5) * 200;
+    positions[i + 1] = (Math.random() - 0.5) * 200;
+    positions[i + 2] = (Math.random() - 0.5) * 200;
+    
+    colors[i] = Math.random() * 0.5 + 0.5;
+    colors[i + 1] = Math.random() * 0.5 + 0.5;
+    colors[i + 2] = 1;
+  }
+
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
   return (
     <points ref={particles} geometry={geometry}>
       <pointsMaterial 
-        size={0.3} 
+        size={0.2} 
         vertexColors
         sizeAttenuation 
         transparent 
-        opacity={0.4}
+        opacity={0.6}
         blending={THREE.AdditiveBlending}
       />
     </points>
@@ -547,15 +550,15 @@ function IntroCameraRig() {
   const { camera } = useThree();
   
   useLayoutEffect(() => {
-    // 1. Set Start Position (Deep space)
-    camera.position.set(0, 50, 150);
+    // 1. Set Start Position (Far Deep space)
+    camera.position.set(0, 100, 400); // Started much further back
     
     // 2. Animate to "Home" Position
     gsap.to(camera.position, {
       x: 0,
       y: 20,
       z: 40,
-      duration: 3.5, // Cinematic duration
+      duration: 7, // Slower, matching the greetings duration
       ease: "power3.out"
     });
   }, [camera]);
@@ -586,7 +589,6 @@ export default function AnimatedPortfolio() {
       const target = currentPos ?? new THREE.Vector3(Math.cos(phase) * radius, y, Math.sin(phase) * radius);
 
       // --- CINEMATIC FLY-IN ---
-      // 1. Move focus to the galaxy
       gsap.to(controlsRef.current.target, {
         x: target.x,
         y: target.y,
@@ -595,7 +597,6 @@ export default function AnimatedPortfolio() {
         ease: "power3.inOut"
       });
 
-      // 2. Move camera close (8 units away)
       const offset = target.clone().normalize().multiplyScalar(8); 
       const camPos = target.clone().add(new THREE.Vector3(offset.x, 2, offset.z)); 
 
@@ -630,8 +631,8 @@ export default function AnimatedPortfolio() {
 
       gsap.to(controlsRef.current.object.position, {
         x: 0,
-        y: 20, // Match Intro End Pos
-        z: 40, // Match Intro End Pos
+        y: 20, 
+        z: 40,
         duration: 2,
         ease: "power3.inOut"
       });
@@ -712,13 +713,13 @@ export default function AnimatedPortfolio() {
       </div>
 
       <Canvas
-        camera={{ position: [0, 50, 150], fov: 50 }} // Initial pos handled by IntroCameraRig
+        camera={{ position: [0, 100, 400], fov: 50 }} // Initial pos handled by IntroCameraRig
         gl={{ antialias: true, alpha: true }}
       >
         <Suspense fallback={null}>
           <color attach="background" args={['#000000']} />
  
-           <IntroCameraRig /> {/* --- ADDED INTRO RIG --- */}
+           <IntroCameraRig /> 
 
            <GalaxyScene 
              activeSection={activeSection} 
@@ -737,7 +738,7 @@ export default function AnimatedPortfolio() {
             minDistance={8}
             maxPolarAngle={Math.PI / 1.5}
             minPolarAngle={Math.PI / 4}
-            autoRotate={false} // --- DISABLED AUTO ROTATE ---
+            autoRotate={false} 
           />
         </Suspense>
       </Canvas>
