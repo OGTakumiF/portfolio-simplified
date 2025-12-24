@@ -1,13 +1,30 @@
 import { Suspense, useRef, useState, useMemo, useEffect, useLayoutEffect } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Text, Stars, OrbitControls, Environment, Sparkles, MeshDistortMaterial, RoundedBox } from '@react-three/drei';
+import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
+import { Text, Stars, OrbitControls, Environment, Sparkles, Trail, Sphere, MeshDistortMaterial, RoundedBox, Cylinder } from '@react-three/drei';
 import {
-  Menu, X, Zap, Music, Heart, Target, Trophy, Briefcase, ArrowRight, Sparkles as SparklesIcon, ArrowLeft
+  Menu, X, Zap, Music, Heart, Target, Trophy, Briefcase, ArrowRight, Sparkles as SparklesIcon, ArrowLeft, ExternalLink
 } from 'lucide-react';
 import * as THREE from 'three';
 import gsap from 'gsap';
 
-// --- DATA TYPES ---
+// --- SHADERS ---
+const vertexShader = `
+  varying vec3 vNormal;
+  void main() {
+    vNormal = normalize( normalMatrix * normal );
+    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+  }
+`;
+
+const fragmentShader = `
+  varying vec3 vNormal;
+  uniform vec3 glowColor;
+  void main() {
+    float intensity = pow( 0.6 - dot( vNormal, vec3( 0.0, 0.0, 1.0 ) ), 2.0 );
+    gl_FragColor = vec4( glowColor, 1.0 ) * intensity * 0.8;
+  }
+`;
+
 type PlanetType = 'gas' | 'rocky' | 'ringed' | 'ice';
 
 interface Planet {
@@ -31,11 +48,10 @@ interface Section {
     heading: string;
     description: string;
     planets: Planet[];
-    highlights?: string[];
   };
 }
 
-// --- CONTENT DATA ---
+// --- DATA: CLEAN & FOCUSED ---
 const sections: Section[] = [
   {
     id: 'engineering',
@@ -45,15 +61,14 @@ const sections: Section[] = [
     darkColor: '#164e63',
     icon: Zap,
     content: {
-      heading: 'Sustainable Infrastructure Engineer',
-      description: 'Specialized in Railway Engineering & Power Systems',
+      heading: 'System Engineer',
+      description: 'Rail & Power Systems',
       planets: [
-        { id: 'p1', title: 'B.Eng. Sustainable Infra', color: '#38bdf8', darkColor: '#0c4a6e', type: 'ringed', size: 2.2, detail: "Graduated with Honours with Merit from SIT." },
-        { id: 'p2', title: 'Diploma Electrical Eng', color: '#0284c7', darkColor: '#0c4a6e', type: 'rocky', size: 1.5, detail: "Specialisation in Electrical Power Engineering." },
-        { id: 'p3', title: 'RailTech Champion', color: '#7dd3fc', darkColor: '#0c4a6e', type: 'gas', size: 2.5, detail: "1st Place in Singapore RailTech Grand Challenge 2024." },
-        { id: 'p4', title: 'LoRaWAN Tracker', color: '#bae6fd', darkColor: '#0c4a6e', type: 'rocky', size: 1.2, detail: "Prototyped safety tracker for railway tunnels." },
-        { id: 'p5', title: 'Academic Papers', color: '#0ea5e9', darkColor: '#0c4a6e', type: 'ice', size: 1.0, detail: "Published works in ICCAR and IEEE SOLI." },
-        { id: 'p6', title: 'Siemens Internship', color: '#0369a1', darkColor: '#0c4a6e', type: 'ringed', size: 1.8, detail: "Managed rail comms renewal projects." }
+        { id: 'p1', title: 'B.Eng (Honours)', color: '#38bdf8', darkColor: '#0c4a6e', type: 'ringed', size: 2.2, detail: "Graduated with Honours (Merit) in Sustainable Infrastructure Engineering (Land) from SIT." },
+        { id: 'p2', title: 'Power Eng. Diploma', color: '#0284c7', darkColor: '#0c4a6e', type: 'rocky', size: 1.5, detail: "Diploma in Electrical Engineering (Power Specialisation) from Ngee Ann Polytechnic." },
+        { id: 'p3', title: 'RailTech Champion', color: '#7dd3fc', darkColor: '#0c4a6e', type: 'gas', size: 2.5, detail: "1st Place Winner: Singapore RailTech Grand Challenge 2024 (Open Innovation)." },
+        { id: 'p4', title: 'LoRaWAN Tracker', color: '#bae6fd', darkColor: '#0c4a6e', type: 'rocky', size: 1.2, detail: "Designed a safety tracking system for railway tunnels using LoRaWAN technology." },
+        { id: 'p6', title: 'Siemens Internship', color: '#0369a1', darkColor: '#0c4a6e', type: 'ice', size: 1.8, detail: "Managed rail comms renewal, coordinated subcontractors, and designed PA systems." }
       ]
     }
   },
@@ -66,12 +81,12 @@ const sections: Section[] = [
     icon: Music,
     content: {
       heading: 'Musician',
-      description: 'Violinist & Vocalist',
+      description: 'Violin & Vocals',
       planets: [
-        { id: 'm1', title: 'Violin', color: '#f472b6', darkColor: '#831843', type: 'ringed', size: 2.0, detail: "Classical training." },
-        { id: 'm2', title: 'Vocals', color: '#fb7185', darkColor: '#831843', type: 'gas', size: 2.4, detail: "Professional performance." },
-        { id: 'm3', title: 'Voice-Over', color: '#fbcfe8', darkColor: '#831843', type: 'rocky', size: 1.3, detail: "Media project narration." },
-        { id: 'm6', title: 'Grade 8 Theory', color: '#9d174d', darkColor: '#831843', type: 'ringed', size: 1.8, detail: "ABRSM Certified." },
+        { id: 'm1', title: 'Violinist', color: '#f472b6', darkColor: '#831843', type: 'ringed', size: 2.0, detail: "Classically trained violinist with performance experience." },
+        { id: 'm2', title: 'Vocalist', color: '#fb7185', darkColor: '#831843', type: 'gas', size: 2.4, detail: "Professional vocal training and recording experience." },
+        { id: 'm5', title: 'Production', color: '#be185d', darkColor: '#831843', type: 'rocky', size: 1.4, detail: "Music production, arrangement, and audio engineering skills." },
+        { id: 'm6', title: 'Grade 8 Theory', color: '#9d174d', darkColor: '#831843', type: 'ice', size: 1.8, detail: "ABRSM Grade 8 Music Theory Certification." },
       ]
     }
   },
@@ -84,10 +99,11 @@ const sections: Section[] = [
     icon: Heart,
     content: {
       heading: 'Psychology',
-      description: 'Mentorship & Behavior',
+      description: 'Human Behavior',
       planets: [
-        { id: 'ps1', title: 'Advisory', color: '#fca5a5', darkColor: '#7f1d1d', type: 'gas', size: 2.2, detail: "Personal advisory." },
-        { id: 'ps6', title: 'Psych of Learning', color: '#991b1b', darkColor: '#7f1d1d', type: 'ringed', size: 1.9, detail: "Certified by FedericaX." },
+        { id: 'ps6', title: 'Psych of Learning', color: '#991b1b', darkColor: '#7f1d1d', type: 'ringed', size: 1.9, detail: "Certified in Psychology of Learning from FedericaX." },
+        { id: 'ps2', title: 'Mentorship', color: '#f87171', darkColor: '#7f1d1d', type: 'rocky', size: 1.6, detail: "Active in community mentorship and advisory roles." },
+        { id: 'ps5', title: 'Mediation', color: '#b91c1c', darkColor: '#7f1d1d', type: 'gas', size: 1.5, detail: "Skilled in conflict resolution and empathetic problem solving." },
       ]
     }
   },
@@ -102,8 +118,8 @@ const sections: Section[] = [
       heading: 'Motorsports',
       description: 'Dynamics & Speed',
       planets: [
-        { id: 'mo1', title: 'Vehicle Dynamics', color: '#fcd34d', darkColor: '#78350f', type: 'ringed', size: 2.5, detail: "Engineering interest." },
-        { id: 'mo6', title: 'Drivers License', color: '#92400e', darkColor: '#78350f', type: 'ringed', size: 1.7, detail: "Class 3 License." },
+        { id: 'mo1', title: 'Vehicle Dynamics', color: '#fcd34d', darkColor: '#78350f', type: 'ringed', size: 2.5, detail: "Deep technical interest in racing strategy and vehicle physics." },
+        { id: 'mo6', title: 'Drivers License', color: '#92400e', darkColor: '#78350f', type: 'rocky', size: 1.7, detail: "Class 3 Drivers License (Manual)." },
       ]
     }
   },
@@ -118,8 +134,8 @@ const sections: Section[] = [
       heading: 'Archery',
       description: 'Focus & Precision',
       planets: [
-        { id: 'a1', title: 'Varsity Archer', color: '#4ade80', darkColor: '#064e3b', type: 'rocky', size: 1.5, detail: "SIT & NP Teams." },
-        { id: 'a2', title: 'Half-Colours', color: '#22c55e', darkColor: '#064e3b', type: 'ringed', size: 2.1, detail: "Awarded for excellence." },
+        { id: 'a1', title: 'Varsity Team', color: '#4ade80', darkColor: '#064e3b', type: 'rocky', size: 1.5, detail: "Competed for SIT and Ngee Ann Polytechnic Varsity Teams." },
+        { id: 'a2', title: 'Half-Colours', color: '#22c55e', darkColor: '#064e3b', type: 'ice', size: 2.1, detail: "Awarded Half-Colours for sporting excellence." },
       ]
     }
   },
@@ -134,14 +150,24 @@ const sections: Section[] = [
       heading: 'Awards',
       description: 'Excellence & Service',
       planets: [
-        { id: 'ac1', title: 'Lean Six Sigma', color: '#fef08a', darkColor: '#713f12', type: 'ringed', size: 2.4, detail: "Green Belt." },
-        { id: 'ac3', title: 'SAF Ammo SO', color: '#eab308', darkColor: '#713f12', type: 'rocky', size: 1.6, detail: "Ammunition Reliability Officer." },
+        { id: 'ac1', title: 'Lean Six Sigma', color: '#fef08a', darkColor: '#713f12', type: 'ringed', size: 2.4, detail: "Green Belt Certified for process improvement." },
+        { id: 'ac3', title: 'SAF Ammo Officer', color: '#eab308', darkColor: '#713f12', type: 'gas', size: 1.6, detail: "Served as Ammunition Reliability Officer during National Service." },
       ]
     }
   }
 ];
 
-// --- 3D COMPONENTS ---
+// --- 3D UTILS ---
+
+function BackgroundImage() {
+  const texture = useLoader(THREE.TextureLoader, "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=2048&auto=format&fit=crop");
+  return (
+    <mesh>
+      <sphereGeometry args={[800, 64, 64]} />
+      <meshBasicMaterial map={texture} side={THREE.BackSide} transparent={true} opacity={0.5} />
+    </mesh>
+  );
+}
 
 function ParticleField() {
   const particles = useRef<THREE.Points>(null);
@@ -176,9 +202,35 @@ function ParticleField() {
   );
 }
 
+function VariedPlanetMesh({ type, color, size }: { type: PlanetType, color: string, size: number }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  useFrame(() => { if (meshRef.current) meshRef.current.rotation.y += 0.005; });
+
+  let distort = 0, roughness = 0.5, metalness = 0.1, speed = 0;
+  if (type === 'gas') { distort = 0.5; speed = 2; roughness = 0.8; }
+  else if (type === 'rocky') { distort = 0.15; speed = 0.5; roughness = 0.9; }
+  else if (type === 'ice') { distort = 0.1; speed = 1; roughness = 0.1; metalness = 0.8; }
+  else if (type === 'ringed') { distort = 0.2; speed = 1.5; roughness = 0.6; }
+
+  return (
+    <group scale={size}>
+      <mesh ref={meshRef}>
+        <sphereGeometry args={[1, 64, 64]} />
+        <MeshDistortMaterial color={color} emissive={color} emissiveIntensity={0.2} roughness={roughness} metalness={metalness} distort={distort} speed={speed} />
+      </mesh>
+      {type === 'ringed' && (
+        <mesh rotation={[Math.PI / 2.5, 0, 0]}>
+          <ringGeometry args={[1.4, 2.0, 64]} />
+          <meshBasicMaterial color={color} transparent opacity={0.4} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
+// --- OUTER VIEW (Galaxies) ---
 function SpiralGalaxy({ color, radius = 3 }: { color: string, radius?: number }) {
   const pointsRef = useRef<THREE.Points>(null);
-  
   const [positions, colors] = useMemo(() => {
     const count = 1500;
     const pos = new Float32Array(count * 3);
@@ -207,9 +259,7 @@ function SpiralGalaxy({ color, radius = 3 }: { color: string, radius?: number })
     return [pos, col];
   }, [color, radius]);
 
-  useFrame(() => {
-    if (pointsRef.current) pointsRef.current.rotation.y += 0.002;
-  });
+  useFrame(() => { if (pointsRef.current) pointsRef.current.rotation.y += 0.002; });
 
   return (
     <group>
@@ -220,7 +270,6 @@ function SpiralGalaxy({ color, radius = 3 }: { color: string, radius?: number })
         </bufferGeometry>
         <pointsMaterial size={0.2} sizeAttenuation vertexColors transparent opacity={0.8} blending={THREE.AdditiveBlending} depthWrite={false} />
       </points>
-      {/* Core Glow */}
       <mesh>
         <sphereGeometry args={[0.5, 16, 16]} />
         <meshBasicMaterial color={color} transparent opacity={0.6} />
@@ -230,46 +279,16 @@ function SpiralGalaxy({ color, radius = 3 }: { color: string, radius?: number })
   );
 }
 
-function VariedPlanetMesh({ type, color, size }: { type: PlanetType, color: string, size: number }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  useFrame(() => { if (meshRef.current) meshRef.current.rotation.y += 0.005; });
-
-  let distort = 0, roughness = 0.5, metalness = 0.1, speed = 0;
-  if (type === 'gas') { distort = 0.5; speed = 2; roughness = 0.8; }
-  else if (type === 'rocky') { distort = 0.15; speed = 0.5; roughness = 0.9; }
-  else if (type === 'ice') { distort = 0.1; speed = 1; roughness = 0.1; metalness = 0.8; }
-  else if (type === 'ringed') { distort = 0.2; speed = 1.5; roughness = 0.6; }
-
-  return (
-    <group scale={size}>
-      <mesh ref={meshRef}>
-        <sphereGeometry args={[1, 64, 64]} />
-        <MeshDistortMaterial color={color} emissive={color} emissiveIntensity={0.2} roughness={roughness} metalness={metalness} distort={distort} speed={speed} />
-      </mesh>
-      {type === 'ringed' && (
-        <mesh rotation={[Math.PI / 2.5, 0, 0]}>
-          <ringGeometry args={[1.4, 2.0, 64]} />
-          <meshBasicMaterial color={color} transparent opacity={0.4} side={THREE.DoubleSide} />
-        </mesh>
-      )}
-    </group>
-  );
-}
-
 function OrbitingGalaxySystem({ section, onClick }: any) {
   const groupRef = useRef<THREE.Group>(null);
   
   useFrame((state) => {
-    // Determine orbit based on index in array
     const idx = sections.findIndex(s => s.id === section.id);
     const radius = 18 + idx * 8;
     const speed = 0.05 + idx * 0.01;
     const angle = state.clock.elapsedTime * speed + (idx * 2);
     const y = Math.sin(idx * 3) * 4;
-    
-    if (groupRef.current) {
-      groupRef.current.position.set(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
-    }
+    if (groupRef.current) groupRef.current.position.set(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
   });
 
   return (
@@ -283,7 +302,6 @@ function OrbitingGalaxySystem({ section, onClick }: any) {
         <sphereGeometry args={[4]} />
         <meshBasicMaterial color="red" />
       </mesh>
-      
       <SpiralGalaxy color={section.color} radius={4} />
       <Text position={[0, 4.5, 0]} fontSize={2.5} color="white" anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#000">
         {section.title}
@@ -292,34 +310,43 @@ function OrbitingGalaxySystem({ section, onClick }: any) {
   );
 }
 
+// --- INNER VIEW (Planets) ---
 function OrbitingPlanetSystem({ planet, onClick, idx, total }: any) {
   const groupRef = useRef<THREE.Group>(null);
+  const [hovered, setHovered] = useState(false);
   
   useFrame((state) => {
     const radius = 12 + idx * 4;
     const speed = 0.2 - idx * 0.02;
     const phase = idx * ((Math.PI * 2) / total);
     const angle = state.clock.elapsedTime * speed + phase;
-    
-    if (groupRef.current) {
-      groupRef.current.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
-    }
+    if (groupRef.current) groupRef.current.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
   });
 
   return (
     <group ref={groupRef}>
       <mesh 
         visible={false} 
-        onClick={(e) => { e.stopPropagation(); onClick(planet); }}
-        onPointerOver={() => document.body.style.cursor = 'pointer'}
-        onPointerOut={() => document.body.style.cursor = 'auto'}
+        onClick={(e) => { e.stopPropagation(); onClick(groupRef.current ? groupRef.current.position.clone() : new THREE.Vector3(), planet); }}
+        onPointerOver={() => { document.body.style.cursor = 'pointer'; setHovered(true); }}
+        onPointerOut={() => { document.body.style.cursor = 'auto'; setHovered(false); }}
       >
-        <sphereGeometry args={[planet.size * 1.2]} />
+        <sphereGeometry args={[planet.size * 1.5]} />
         <meshBasicMaterial color="red" />
       </mesh>
 
       <VariedPlanetMesh type={planet.type} color={planet.color} size={planet.size} />
-      <Text position={[0, planet.size + 1.2, 0]} fontSize={1} color="white" anchorX="center" anchorY="middle" outlineWidth={0.05} outlineColor="#000">
+      
+      {/* Label only appears on hover or if it's large */}
+      <Text 
+        position={[0, planet.size + 1.2, 0]} 
+        fontSize={hovered ? 1.5 : 1} 
+        color="white" 
+        anchorX="center" 
+        anchorY="middle" 
+        outlineWidth={0.05} 
+        outlineColor="#000"
+      >
         {planet.title}
       </Text>
     </group>
@@ -337,25 +364,20 @@ function InternationalSpaceStation() {
 
   return (
     <group ref={ref} scale={0.8} rotation={[0.2, 0, 0]}>
-       {/* Body */}
-       <mesh position={[0, 0, 0]} rotation={[0, 0, Math.PI/2]}>
-         <cylinderGeometry args={[0.5, 0.5, 8, 16]} />
-         <meshStandardMaterial color="#ccc" metalness={0.6} roughness={0.3} />
-       </mesh>
-       {/* Crossbar */}
-       <mesh position={[0, 0, 0]}>
-         <boxGeometry args={[18, 0.4, 0.4]} />
-         <meshStandardMaterial color="#666" />
-       </mesh>
-       {/* Solar Arrays */}
-       {[-7, 7].map((x, i) => (
-         <group key={i} position={[x, 0, 0]}>
-            <mesh rotation={[0.5, 0, 0]}>
-               <boxGeometry args={[3, 0.05, 8]} />
-               <meshStandardMaterial color="#1a237e" metalness={0.9} roughness={0.2} emissive="#0d1b3e" emissiveIntensity={0.2} />
-            </mesh>
-         </group>
-       ))}
+       <Cylinder args={[0.5, 0.5, 4, 16]} rotation={[Math.PI/2, 0, 0]} position={[0, 0, -2]}><meshStandardMaterial color="#d0d0d0" metalness={0.7} roughness={0.2} /></Cylinder>
+       <Cylinder args={[0.6, 0.6, 5, 16]} rotation={[Math.PI/2, 0, 0]} position={[0, 0, 2]}><meshStandardMaterial color="#e0e0e0" metalness={0.8} roughness={0.2} /></Cylinder>
+       <Sphere args={[0.7]} position={[0, 0, 0]}><meshStandardMaterial color="#a0a0a0" metalness={0.6} /></Sphere>
+       <Box args={[18, 0.4, 0.4]} position={[0, 0, 0]}><meshStandardMaterial color="#555" metalness={0.5} /></Box>
+       <group position={[-6, 0, 0]}>
+          <Cylinder args={[0.3, 0.3, 1]} rotation={[0, 0, Math.PI/2]}><meshStandardMaterial color="#444" /></Cylinder>
+          <Box args={[3, 0.05, 8]} position={[0, 0, 0]} rotation={[0.4, 0, 0]}><meshStandardMaterial color="#1a237e" metalness={0.9} roughness={0.2} emissive="#0d1b3e" emissiveIntensity={0.2} /></Box>
+          <Box args={[3.05, 0.06, 8.05]} position={[0, 0, 0]} rotation={[0.4, 0, 0]}><meshBasicMaterial color="#000" wireframe opacity={0.2} transparent /></Box>
+       </group>
+       <group position={[6, 0, 0]}>
+          <Cylinder args={[0.3, 0.3, 1]} rotation={[0, 0, Math.PI/2]}><meshStandardMaterial color="#444" /></Cylinder>
+          <Box args={[3, 0.05, 8]} position={[0, 0, 0]} rotation={[0.4, 0, 0]}><meshStandardMaterial color="#1a237e" metalness={0.9} roughness={0.2} emissive="#0d1b3e" emissiveIntensity={0.2} /></Box>
+          <Box args={[3.05, 0.06, 8.05]} position={[0, 0, 0]} rotation={[0.4, 0, 0]}><meshBasicMaterial color="#000" wireframe opacity={0.2} transparent /></Box>
+       </group>
        <Text position={[0, 3, 0]} fontSize={2} color="white" anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#000">Sean Ogta Goh</Text>
     </group>
   )
@@ -407,13 +429,12 @@ function GalaxyScene({ activeSection, onSectionClick, view, planets, onPlanetCli
               planet={planet}
               idx={idx}
               total={planets.length}
-              onClick={() => onPlanetClick(planet)}
+              onClick={(pos: any, p: Planet) => onPlanetClick(p, pos)}
             />
           ))}
         </>
       )}
       
-      {/* Background Stars (Replaces Image) */}
       <Stars radius={300} depth={100} count={3000} factor={6} saturation={0} fade speed={0.5} />
     </>
   );
@@ -424,9 +445,7 @@ function IntroCameraRig({ active }: { active: boolean }) {
   const [hasStarted, setHasStarted] = useState(false);
   
   useLayoutEffect(() => {
-    if (!hasStarted) {
-      camera.position.set(0, 100, 2000); 
-    }
+    if (!hasStarted) camera.position.set(0, 100, 2000); 
   }, [camera, hasStarted]);
 
   useEffect(() => {
@@ -454,10 +473,9 @@ export default function AnimatedPortfolio({ introPlaying = false }: { introPlayi
     setView('system');
     setPlanets(section.content.planets);
     if (controlsRef.current) {
-      // Determine where the galaxy roughly is
       const idx = sections.findIndex(s => s.id === section.id);
       const radius = 18 + idx * 8;
-      const angle = 0 + (idx * 2); // Approximation from Orbiter
+      const angle = 0 + (idx * 2);
       const y = Math.sin(idx * 3) * 4;
       const target = new THREE.Vector3(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
 
@@ -468,7 +486,16 @@ export default function AnimatedPortfolio({ introPlaying = false }: { introPlayi
     }
   };
 
-  const handlePlanetClick = (planet: Planet) => { setActivePlanet(planet); };
+  const handlePlanetClick = (planet: Planet, pos: THREE.Vector3) => { 
+    setActivePlanet(planet); 
+    // Focus camera on the clicked planet
+    if (controlsRef.current) {
+      gsap.to(controlsRef.current.target, { x: pos.x, y: pos.y, z: pos.z, duration: 1.5, ease: "power2.out" });
+      const offset = pos.clone().normalize().multiplyScalar(8); // Get closer
+      const camPos = pos.clone().add(new THREE.Vector3(offset.x, 2, offset.z));
+      gsap.to(controlsRef.current.object.position, { x: camPos.x, y: camPos.y, z: camPos.z, duration: 1.5, ease: "power2.out" });
+    }
+  };
 
   const resetView = () => {
     setActiveSection(null);
@@ -533,18 +560,34 @@ export default function AnimatedPortfolio({ introPlaying = false }: { introPlayi
           <color attach="background" args={['#000000']} />
            <IntroCameraRig active={introPlaying} />
            <GalaxyScene activeSection={activeSection} onSectionClick={handleSectionClick} view={view} planets={planets} onPlanetClick={handlePlanetClick} />
-           <OrbitControls ref={controlsRef} enablePan={false} enableZoom={true} enableRotate={true} maxDistance={150} minDistance={10} maxPolarAngle={Math.PI / 1.5} minPolarAngle={Math.PI / 4} autoRotate={false} />
+           <OrbitControls ref={controlsRef} enablePan={false} enableZoom={true} enableRotate={true} maxDistance={150} minDistance={5} maxPolarAngle={Math.PI / 1.5} minPolarAngle={Math.PI / 4} autoRotate={false} />
         </Suspense>
       </Canvas>
 
+      {/* --- SIDEBAR INFO PANEL --- */}
       {activePlanet && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md transition-opacity" onClick={() => setActivePlanet(null)}>
-          <div className="bg-gradient-to-br from-slate-900 to-black rounded-3xl p-8 md:p-12 max-w-2xl w-full border border-white/10 shadow-2xl transform transition-all animate-fade-in relative overflow-hidden" style={{ borderColor: activePlanet.color, borderWidth: '2px', boxShadow: `0 0 80px ${activePlanet.color}60` }} onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setActivePlanet(null)} className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors bg-white/10 p-3 rounded-xl hover:bg-white/20 z-10"><X className="w-6 h-6" /></button>
-            <div className="relative z-10 text-left">
-              <h2 className="text-3xl font-black text-white mb-6 text-center">{activePlanet.title}</h2>
-              {activePlanet.detail ? <p className="text-lg text-slate-300 whitespace-pre-line">{activePlanet.detail}</p> : <p className="text-lg text-slate-300 text-center">Detailed information about this achievement or skill would be displayed here.</p>}
+        <div className="fixed top-0 right-0 h-full w-full md:w-96 bg-black/60 backdrop-blur-xl border-l border-white/10 p-8 shadow-2xl z-50 flex flex-col justify-center animate-slide-in-right">
+          <button onClick={() => setActivePlanet(null)} className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors"><X className="w-8 h-8" /></button>
+          
+          <div className="space-y-6">
+            <div className="inline-block px-3 py-1 rounded-full bg-white/10 text-xs font-bold tracking-wider text-cyan-400 uppercase">
+              {activePlanet.type.toUpperCase()} PLANET
             </div>
+            
+            <h2 className="text-4xl font-black text-white leading-tight" style={{ textShadow: `0 0 30px ${activePlanet.color}` }}>
+              {activePlanet.title}
+            </h2>
+            
+            <div className="h-1 w-20 rounded-full" style={{ backgroundColor: activePlanet.color }} />
+            
+            <p className="text-lg text-slate-300 leading-relaxed font-light">
+              {activePlanet.detail || "Detail unavailable."}
+            </p>
+
+            <button className="mt-8 flex items-center space-x-2 text-white hover:text-cyan-400 transition-colors group">
+              <span className="uppercase tracking-widest text-sm font-bold">Learn More</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
           </div>
         </div>
       )}
