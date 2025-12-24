@@ -1,6 +1,6 @@
 import { Suspense, useRef, useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
-import { Text, Stars, OrbitControls, Environment, Sparkles, Trail, Sphere, MeshDistortMaterial, Box, Cylinder } from '@react-three/drei';
+import { Text, Stars, OrbitControls, Environment, Sparkles, Trail, Sphere, MeshDistortMaterial, Torus } from '@react-three/drei';
 import {
   Menu, X, Zap, Music, Heart, Target, Trophy, Briefcase, ArrowRight, Sparkles as SparklesIcon, ArrowLeft
 } from 'lucide-react';
@@ -25,12 +25,16 @@ const fragmentShader = `
   }
 `;
 
+type PlanetType = 'gas' | 'rocky' | 'ringed' | 'ice';
+
 interface Planet {
   id: string;
   title: string;
   color: string;
   darkColor: string;
   detail?: string;
+  type: PlanetType; // New: Defines the visual style
+  size: number;     // New: Defines relative size
 }
 
 interface Section {
@@ -61,46 +65,28 @@ const sections: Section[] = [
       description: 'Specialized in Railway Engineering & Power Systems',
       planets: [
         { 
-          id: 'p1', 
-          title: 'B.Eng. Sustainable Infrastructure (Land), Honours with Merit', 
-          color: '#38bdf8', 
-          darkColor: '#0c4a6e',
-          detail: "Graduated with Honours with Merit from the Singapore Institute of Technology (SIT).\n\nMy studies in Sustainable Infrastructure Engineering (Land) provided a strong foundation in designing and managing modern infrastructure. I was also an active member of the SIE Student Member Committee and a student member of the IEEE and IES."
+          id: 'p1', title: 'B.Eng. Sustainable Infrastructure', color: '#38bdf8', darkColor: '#0c4a6e', type: 'ringed', size: 2.2,
+          detail: "Graduated with Honours with Merit from the Singapore Institute of Technology (SIT)."
         },
         { 
-          id: 'p2', 
-          title: 'Diploma in Electrical Engineering (Power Specialisation)', 
-          color: '#38bdf8', 
-          darkColor: '#0c4a6e',
-          detail: "Obtained a Diploma from Ngee Ann Polytechnic with a specialisation in Electrical Power Engineering.\n\nThis equipped me with core technical skills in power distribution, control systems, and electronics."
+          id: 'p2', title: 'Diploma in Electrical Engineering', color: '#0284c7', darkColor: '#0c4a6e', type: 'rocky', size: 1.5,
+          detail: "Obtained a Diploma from Ngee Ann Polytechnic with a specialisation in Electrical Power Engineering."
         },
         { 
-          id: 'p3', 
-          title: 'Champion, Singapore RailTech Grand Challenge 2024', 
-          color: '#38bdf8', 
-          darkColor: '#0c4a6e',
-          detail: "Achieved 1st Place (Champion) in the Open Innovation Challenge at the Singapore RailTech Grand Challenge (SGRTGC) 2024.\n\nThis award recognized an innovative solution developed for the rail industry, based on work from the LongRange Safety Tracker project."
+          id: 'p3', title: 'RailTech Grand Challenge Champion', color: '#7dd3fc', darkColor: '#0c4a6e', type: 'gas', size: 2.5,
+          detail: "Achieved 1st Place (Champion) in the Open Innovation Challenge at the Singapore RailTech Grand Challenge (SGRTGC) 2024."
         },
         { 
-          id: 'p4', 
-          title: 'Designed LoRaWAN Safety Tracker for Railway Tunnels', 
-          color: '#38bdf8', 
-          darkColor: '#0c4a6e',
-          detail: "Designed and prototyped a LoRaWAN tracking and emergency alert system to enhance the safety of maintenance personnel in railway tunnels.\n\nThis project was advised by SBS Transit Rail and was an enhancement based on award-winning solutions for an LTA open innovation competition."
+          id: 'p4', title: 'LoRaWAN Safety Tracker', color: '#bae6fd', darkColor: '#0c4a6e', type: 'rocky', size: 1.2,
+          detail: "Designed and prototyped a LoRaWAN tracking and emergency alert system."
         },
         { 
-          id: 'p5', 
-          title: 'Published Academic Papers & Best Presenter Award', 
-          color: '#38bdf8', 
-          darkColor: '#0c4a6e',
-          detail: "Co-authored multiple conference papers on this railway safety technology:\n\n• 'Design and Prototyping of a Real-Time Location Tracking System...' for the 2025 11th International Conference on Control, Automation and Robotics (ICCAR).\n\n• 'A Real-Time LoRaWAN Tracking System in Railway Tunnels...' (In Press).\n\n• Received the Best Presenter Award at the IEEE SOLI 2025 Conference."
+          id: 'p5', title: 'Published Academic Papers', color: '#0ea5e9', darkColor: '#0c4a6e', type: 'ice', size: 1.0,
+          detail: "Co-authored multiple conference papers on railway safety technology."
         },
         { 
-          id: 'p6', 
-          title: 'Project Management Intern at Siemens AG (Rail Comms)', 
-          color: '#38bdf8', 
-          darkColor: '#0c4a6e',
-          detail: "As a Project Management Intern at Siemens AG, I managed the renewal of rail communications systems.\n\nMy responsibilities included coordinating with subcontractors and operators, designing PA system front-ends (SLDs and cable routing), overseeing on-site installation and commissioning, and resolving on-site technical issues."
+          id: 'p6', title: 'Siemens AG Internship', color: '#0369a1', darkColor: '#0c4a6e', type: 'ringed', size: 1.8,
+          detail: "Managed the renewal of rail communications systems."
         }
       ],
       highlights: ['Railway Systems', 'Power Distribution', 'Infrastructure Design']
@@ -117,12 +103,12 @@ const sections: Section[] = [
       heading: 'Musician & Performer',
       description: 'Trained violinist with vocal capabilities',
       planets: [
-        { id: 'm1', title: 'Classical violin performance and training', color: '#f472b6', darkColor: '#831843', detail: "Trained in classical violin performance and technique." },
-        { id: 'm2', title: 'Vocal training and professional performance', color: '#f472b6', darkColor: '#831843', detail: "Experienced in vocal training and professional performance settings." },
-        { id: 'm3', title: 'Voice-over work for media projects', color: '#f472b6', darkColor: '#831843' },
-        { id: 'm4', title: 'Studio recording experience', color: '#f472b6', darkColor: '#831843' },
-        { id: 'm5', title: 'Music production and arrangement', color: '#f472b6', darkColor: '#831843' },
-        { id: 'm6', title: 'ABRSM Grade 8 Music Theory', color: '#f472b6', darkColor: '#831843', detail: "Certified with a Level 3 Certification in Graded Examination in Music Theory (Grade 8) from ABRSM, demonstrating an advanced understanding of music theory." },
+        { id: 'm1', title: 'Classical Violin', color: '#f472b6', darkColor: '#831843', type: 'ringed', size: 2.0, detail: "Trained in classical violin performance." },
+        { id: 'm2', title: 'Vocal Performance', color: '#fb7185', darkColor: '#831843', type: 'gas', size: 2.4, detail: "Experienced in vocal training and performance." },
+        { id: 'm3', title: 'Voice-Over Work', color: '#fbcfe8', darkColor: '#831843', type: 'rocky', size: 1.3, detail: "Provided voice-over work for media." },
+        { id: 'm4', title: 'Studio Recording', color: '#db2777', darkColor: '#831843', type: 'ice', size: 1.5, detail: "Studio recording experience." },
+        { id: 'm5', title: 'Music Production', color: '#be185d', darkColor: '#831843', type: 'rocky', size: 1.4, detail: "Skilled in music production." },
+        { id: 'm6', title: 'ABRSM Grade 8', color: '#9d174d', darkColor: '#831843', type: 'ringed', size: 1.8, detail: "Certified with ABRSM Grade 8 Music Theory." },
       ],
       highlights: ['Violin', 'Vocals', 'Performance']
     }
@@ -138,12 +124,12 @@ const sections: Section[] = [
       heading: 'Psychology & Advisory',
       description: 'Passionate about understanding and helping others',
       planets: [
-        { id: 'ps1', title: 'Regular advisor for friends and family', color: '#fb7185', darkColor: '#7f1d1d' },
-        { id: 'ps2', title: 'Community support and mentorship', color: '#fb7185', darkColor: '#7f1d1d' },
-        { id: 'ps3', title: 'Empathetic problem-solving approach', color: '#fb7185', darkColor: '#7f1d1d' },
-        { id: 'ps4', title: 'Personal and professional development focus', color: '#fb7185', darkColor: '#7f1d1d' },
-        { id: 'ps5', title: 'Conflict resolution and mediation', color: '#fb7185', darkColor: '#7f1d1d' },
-        { id: 'ps6', title: 'Certified in Psychology of Learning', color: '#fb7185', darkColor: '#7f1d1d', detail: "Completed a certification in 'Psicologia dell'apprendimento' (Psychology of Learning) from FedericaX, reflecting a personal interest in human behavior and development." },
+        { id: 'ps1', title: 'Advisory', color: '#fca5a5', darkColor: '#7f1d1d', type: 'gas', size: 2.2, detail: "Regular advisor for friends and family." },
+        { id: 'ps2', title: 'Mentorship', color: '#f87171', darkColor: '#7f1d1d', type: 'rocky', size: 1.6, detail: "Active in community support." },
+        { id: 'ps3', title: 'Problem Solving', color: '#ef4444', darkColor: '#7f1d1d', type: 'rocky', size: 1.4, detail: "Empathetic problem-solving." },
+        { id: 'ps4', title: 'Development', color: '#dc2626', darkColor: '#7f1d1d', type: 'ice', size: 1.2, detail: "Focused on personal development." },
+        { id: 'ps5', title: 'Conflict Resolution', color: '#b91c1c', darkColor: '#7f1d1d', type: 'rocky', size: 1.5, detail: "Skilled in mediation." },
+        { id: 'ps6', title: 'Psych of Learning', color: '#991b1b', darkColor: '#7f1d1d', type: 'ringed', size: 1.9, detail: "Certified in Psychology of Learning." },
       ],
       highlights: ['Mentorship', 'Counseling', 'Development']
     }
@@ -159,12 +145,12 @@ const sections: Section[] = [
       heading: 'Motorsports Enthusiast',
       description: 'Speed, precision, and engineering excellence',
       planets: [
-        { id: 'mo1', title: 'Deep interest in vehicle dynamics', color: '#fcd34d', darkColor: '#78350f' },
-        { id: 'mo2', title: 'Racing strategy and competitive analytics', color: '#fcd34d', darkColor: '#78350f' },
-        { id: 'mo3', title: 'High-performance engineering principles', color: '#fcd34d', darkColor: '#78350f' },
-        { id: 'mo4', title: 'Motorsports technology and innovations', color: '#fcd34d', darkColor: '#78350f' },
-        { id: 'mo5', title: 'Passion for precision and speed', color: '#fcd34d', darkColor: '#78350f' },
-        { id: 'mo6', title: 'Class 3 Drivers License', color: '#fcd34d', darkColor: '#78350f', detail: "Holding a Class 3 Drivers License since 2020." },
+        { id: 'mo1', title: 'Vehicle Dynamics', color: '#fcd34d', darkColor: '#78350f', type: 'ringed', size: 2.5, detail: "Deep interest in vehicle dynamics." },
+        { id: 'mo2', title: 'Racing Strategy', color: '#fbbf24', darkColor: '#78350f', type: 'gas', size: 2.0, detail: "Interest in racing strategy." },
+        { id: 'mo3', title: 'High Performance', color: '#f59e0b', darkColor: '#78350f', type: 'rocky', size: 1.6, detail: "High-performance engineering." },
+        { id: 'mo4', title: 'Tech Innovation', color: '#d97706', darkColor: '#78350f', type: 'ice', size: 1.3, detail: "Motorsports technology." },
+        { id: 'mo5', title: 'Precision & Speed', color: '#b45309', darkColor: '#78350f', type: 'rocky', size: 1.4, detail: "Passion for precision." },
+        { id: 'mo6', title: 'Drivers License', color: '#92400e', darkColor: '#78350f', type: 'ringed', size: 1.7, detail: "Class 3 Drivers License." },
       ],
       highlights: ['Performance', 'Dynamics', 'Racing']
     }
@@ -180,12 +166,12 @@ const sections: Section[] = [
       heading: 'Archery Practice',
       description: 'Focus, discipline, and precision mastery',
       planets: [
-        { id: 'a1', title: 'Varsity Archer (SIT & NP)', color: '#4ade80', darkColor: '#064e3b', detail: "Competed as a member of the varsity archery teams at both Singapore Institute of Technology (SIT) and Ngee Ann Polytechnic." },
-        { id: 'a2', title: 'Half-Colours Award (Ngee Ann Polytechnic)', color: '#4ade80', darkColor: '#064e3b', detail: "Received the Half-Colours Award from Ngee Ann Polytechnic, recognizing achievements and contributions to the varsity archery team." },
-        { id: 'a3', title: 'Discipline & Focus', color: '#4ade80', darkColor: '#064e3b', detail: "Archery practice hones mental discipline, focus, and a philosophy of continuous improvement, which I apply to engineering and technical challenges." },
-        { id: 'a4', title: 'Mental discipline and focus training', color: '#4ade80', darkColor: '#064e3b' },
-        { id: 'a5', title: 'Precision accuracy development', color: '#4ade80', darkColor: '#064e3b' },
-        { id: 'a6', title: 'Continuous improvement philosophy', color: '#4ade80', darkColor: '#064e3b' }
+        { id: 'a1', title: 'Varsity Archer', color: '#4ade80', darkColor: '#064e3b', type: 'rocky', size: 1.5, detail: "Varsity team member." },
+        { id: 'a2', title: 'Half-Colours Award', color: '#22c55e', darkColor: '#064e3b', type: 'ringed', size: 2.1, detail: "Received Half-Colours Award." },
+        { id: 'a3', title: 'Discipline', color: '#16a34a', darkColor: '#064e3b', type: 'ice', size: 1.2, detail: "Mental discipline." },
+        { id: 'a4', title: 'Mental Focus', color: '#15803d', darkColor: '#064e3b', type: 'gas', size: 2.3, detail: "Focus training." },
+        { id: 'a5', title: 'Precision', color: '#166534', darkColor: '#064e3b', type: 'rocky', size: 1.4, detail: "Precision accuracy." },
+        { id: 'a6', title: 'Continuous Improvement', color: '#14532d', darkColor: '#064e3b', type: 'rocky', size: 1.6, detail: "Philosophy of improvement." }
       ],
       highlights: ['Precision', 'Focus', 'Discipline']
     }
@@ -201,12 +187,12 @@ const sections: Section[] = [
       heading: 'Multi-Disciplinary Excellence',
       description: 'Combining technical expertise with creative passion',
       planets: [
-        { id: 'ac1', title: 'Lean Six Sigma (Green Belt)', color: '#fde047', darkColor: '#713f12', detail: "Certified Lean Six Sigma Green Belt, demonstrating skills in process improvement, statistical analysis, and quality management." },
-        { id: 'ac2', title: 'Professional Certifications', color: '#fde047', darkColor: '#713f12', detail: "Holds multiple professional certifications including:\n\n• 'Mastering systems thinking in practice' (The Open University)\n• 'SAP Enterprise Services (Materials Management)'\n• 'Apply Workplace Safety and Health in Construction Sites'" },
-        { id: 'ac3', title: 'SAF Ammunition Reliability SO (NS)', color: '#fde047', darkColor: '#713f12', detail: "During National Service, served as an Ammunition Reliability SO. Centralised disparate data into a master repository, enabling the creation of the annual Tri-Service Ammunition Surveillance Work Plan. Also conducted root cause analysis on ammunition incident reports." },
-        { id: 'ac4', title: 'SAFAC Digital-In-Charge (NS)', color: '#fde047', darkColor: '#713f12', detail: "Also served as the Digital-In-Charge for SAF Ammunition Command. Directed all content for SAFAC Firepower TV to enhance safety and security awareness. Managed media production and live event coverage for key events like Change of Command and SAF Day." },
-        { id: 'ac5', title: 'Installation Engineer Intern (ST Eng.)', color: '#fde047', darkColor: '#713f12', detail: "As an intern, I supervised on-site installation of\nPlatform Screen Door (PSD) systems, ensuring WSH compliance. I also\nprepared reports, assisted the PM with schedules, and participated in\nfault findings and technical investigations." },
-        { id: 'ac6', title: 'Bridging engineering, arts, and personal development', color: '#fde047', darkColor: '#713f12' }
+        { id: 'ac1', title: 'Lean Six Sigma', color: '#fef08a', darkColor: '#713f12', type: 'ringed', size: 2.4, detail: "Green Belt Certified." },
+        { id: 'ac2', title: 'Professional Certs', color: '#fde047', darkColor: '#713f12', type: 'gas', size: 2.0, detail: "Various professional certifications." },
+        { id: 'ac3', title: 'SAF Ammunition', color: '#eab308', darkColor: '#713f12', type: 'rocky', size: 1.6, detail: "Ammunition Reliability SO." },
+        { id: 'ac4', title: 'Digital I/C', color: '#ca8a04', darkColor: '#713f12', type: 'ice', size: 1.3, detail: "Digital-In-Charge." },
+        { id: 'ac5', title: 'ST Eng. Internship', color: '#a16207', darkColor: '#713f12', type: 'rocky', size: 1.5, detail: "Installation Engineer Intern." },
+        { id: 'ac6', title: 'Multidisciplinary', color: '#854d0e', darkColor: '#713f12', type: 'ringed', size: 1.8, detail: "Bridging disciplines." }
       ],
       highlights: ['Excellence', 'Leadership', 'Innovation']
     }
@@ -311,24 +297,71 @@ function SpiralGalaxy({ color, radius = 3 }: { color: string, radius?: number })
   );
 }
 
-function PlanetMesh({ color, radius = 2 }: { color: string, radius?: number }) {
+// --- NEW COMPONENT: Varied Planet Mesh ---
+function VariedPlanetMesh({ type, color, size }: { type: PlanetType, color: string, size: number }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  
+  useFrame((state) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.y += 0.005;
+    }
+  });
+
+  // Common Geometry: Sphere
+  // Distort/Roughness varies by type
+  let distort = 0;
+  let roughness = 0.5;
+  let metalness = 0.1;
+  let speed = 0;
+
+  if (type === 'gas') {
+    distort = 0.6; // Swirly
+    speed = 3;
+    roughness = 0.8;
+  } else if (type === 'rocky') {
+    distort = 0.2; // Bumpy
+    speed = 0.5;
+    roughness = 0.9;
+  } else if (type === 'ice') {
+    distort = 0.1;
+    speed = 1;
+    roughness = 0.1; // Shiny
+    metalness = 0.8;
+  } else if (type === 'ringed') {
+    distort = 0.3;
+    speed = 2;
+    roughness = 0.6;
+  }
+
   return (
-    <group>
-      <mesh>
-        <sphereGeometry args={[radius, 32, 32]} />
-        <MeshDistortMaterial color={color} emissive={color} emissiveIntensity={0.2} roughness={0.4} metalness={0.6} distort={0.2} speed={2} />
+    <group scale={size}>
+      {/* The Planet Body */}
+      <mesh ref={meshRef}>
+        <sphereGeometry args={[1, 64, 64]} />
+        <MeshDistortMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={0.1}
+          roughness={roughness}
+          metalness={metalness}
+          distort={distort}
+          speed={speed}
+        />
       </mesh>
-      <mesh rotation={[Math.PI / 2.2, 0, 0]}>
-        <ringGeometry args={[radius * 1.4, radius * 1.8, 64]} />
-        <meshBasicMaterial color={color} transparent opacity={0.4} side={THREE.DoubleSide} />
-      </mesh>
+
+      {/* Optional Ring */}
+      {type === 'ringed' && (
+        <mesh rotation={[Math.PI / 2.5, 0, 0]}>
+          <ringGeometry args={[1.4, 2.2, 64]} />
+          <meshBasicMaterial color={color} transparent opacity={0.5} side={THREE.DoubleSide} />
+        </mesh>
+      )}
     </group>
   );
 }
 
 function OrbitingGalaxySystem({ section, onClick, isActive, orbit }: any) {
   const groupRef = useRef<THREE.Group>(null);
-  const [hovered, setHovered] = useState(false);
   
   useFrame((state) => {
     if (groupRef.current && orbit) {
@@ -343,8 +376,8 @@ function OrbitingGalaxySystem({ section, onClick, isActive, orbit }: any) {
       <mesh 
         visible={false} 
         onClick={(e) => { e.stopPropagation(); onClick(groupRef.current ? groupRef.current.position.clone() : new THREE.Vector3(...section.position)); }}
-        onPointerOver={() => { document.body.style.cursor = 'pointer'; setHovered(true); }}
-        onPointerOut={() => { document.body.style.cursor = 'auto'; setHovered(false); }}
+        onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
+        onPointerOut={() => { document.body.style.cursor = 'auto'; }}
       >
         <sphereGeometry args={[4]} />
         <meshBasicMaterial color="red" />
@@ -359,9 +392,9 @@ function OrbitingGalaxySystem({ section, onClick, isActive, orbit }: any) {
   );
 }
 
-function OrbitingPlanetSystem({ planet, onClick, isActive, orbit }: any) {
+// --- UPDATED INNER SYSTEM: Using Varied Planets ---
+function OrbitingPlanetSystem({ planet, onClick, isActive, orbit }: { planet: Planet, onClick: any, isActive: boolean, orbit: any }) {
   const groupRef = useRef<THREE.Group>(null);
-  const [hovered, setHovered] = useState(false);
   
   useFrame((state) => {
     if (groupRef.current && orbit) {
@@ -375,93 +408,28 @@ function OrbitingPlanetSystem({ planet, onClick, isActive, orbit }: any) {
       <mesh 
         visible={false} 
         onClick={(e) => { e.stopPropagation(); onClick(planet); }}
-        onPointerOver={() => { document.body.style.cursor = 'pointer'; setHovered(true); }}
-        onPointerOut={() => { document.body.style.cursor = 'auto'; setHovered(false); }}
+        onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
+        onPointerOut={() => { document.body.style.cursor = 'auto'; }}
       >
-        <sphereGeometry args={[2]} />
+        <sphereGeometry args={[planet.size * 1.5]} /> {/* Hitbox relative to size */}
         <meshBasicMaterial color="red" />
       </mesh>
 
-      <PlanetMesh color={planet.color} radius={1.5} />
+      {/* Use the new Varied Component */}
+      <VariedPlanetMesh 
+        type={planet.type} 
+        color={planet.color} 
+        size={planet.size} 
+      />
 
-      <Text position={[0, 2.5, 0]} fontSize={1} color="white" anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#000">
+      <Text position={[0, planet.size + 1.5, 0]} fontSize={1} color="white" anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#000">
         {planet.title}
       </Text>
     </group>
   );
 }
 
-// --- NEW ISS COMPONENT ---
-function InternationalSpaceStation() {
-  const ref = useRef<THREE.Group>(null);
-  useFrame((state) => {
-    if (ref.current) {
-      // Very slow, majestic rotation
-      ref.current.rotation.y = state.clock.elapsedTime * 0.05;
-      ref.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.05) * 0.05;
-    }
-  });
-
-  return (
-    <group ref={ref} scale={0.8} rotation={[0.2, 0, 0]}>
-       {/* --- MODULES --- */}
-       {/* Zvezda / Zarya Service Modules (Back) */}
-       <Cylinder args={[0.5, 0.5, 4, 16]} rotation={[Math.PI/2, 0, 0]} position={[0, 0, -2]}>
-          <meshStandardMaterial color="#d0d0d0" metalness={0.7} roughness={0.2} />
-       </Cylinder>
-       {/* Unity / Destiny / Columbus (Front) */}
-       <Cylinder args={[0.6, 0.6, 5, 16]} rotation={[Math.PI/2, 0, 0]} position={[0, 0, 2]}>
-          <meshStandardMaterial color="#e0e0e0" metalness={0.8} roughness={0.2} />
-       </Cylinder>
-       {/* Node Connectors */}
-       <Sphere args={[0.7]} position={[0, 0, 0]}>
-          <meshStandardMaterial color="#a0a0a0" metalness={0.6} />
-       </Sphere>
-
-       {/* --- INTEGRATED TRUSS STRUCTURE (The Spine) --- */}
-       <Box args={[18, 0.4, 0.4]} position={[0, 0, 0]}>
-          <meshStandardMaterial color="#555" metalness={0.5} />
-       </Box>
-
-       {/* --- SOLAR ARRAYS (Wings) --- */}
-       {/* Left Wing Group */}
-       <group position={[-6, 0, 0]}>
-          {/* Rotating joint */}
-          <Cylinder args={[0.3, 0.3, 1]} rotation={[0, 0, Math.PI/2]}><meshStandardMaterial color="#444" /></Cylinder>
-          {/* Panels */}
-          <Box args={[3, 0.05, 8]} position={[0, 0, 0]} rotation={[0.4, 0, 0]}>
-             <meshStandardMaterial color="#1a237e" metalness={0.9} roughness={0.2} emissive="#0d1b3e" emissiveIntensity={0.2} />
-          </Box>
-          {/* Panel Grid Lines (Texture trick using wireframe overlay) */}
-          <Box args={[3.05, 0.06, 8.05]} position={[0, 0, 0]} rotation={[0.4, 0, 0]}>
-             <meshBasicMaterial color="#000" wireframe opacity={0.2} transparent />
-          </Box>
-       </group>
-
-       {/* Right Wing Group */}
-       <group position={[6, 0, 0]}>
-          <Cylinder args={[0.3, 0.3, 1]} rotation={[0, 0, Math.PI/2]}><meshStandardMaterial color="#444" /></Cylinder>
-          <Box args={[3, 0.05, 8]} position={[0, 0, 0]} rotation={[0.4, 0, 0]}>
-             <meshStandardMaterial color="#1a237e" metalness={0.9} roughness={0.2} emissive="#0d1b3e" emissiveIntensity={0.2} />
-          </Box>
-          <Box args={[3.05, 0.06, 8.05]} position={[0, 0, 0]} rotation={[0.4, 0, 0]}>
-             <meshBasicMaterial color="#000" wireframe opacity={0.2} transparent />
-          </Box>
-       </group>
-
-       {/* Radiators (White Panels) */}
-       <Box args={[4, 0.1, 1.5]} position={[-2, -1, 0]} rotation={[0.2, 0, 0]}>
-          <meshStandardMaterial color="#fff" />
-       </Box>
-
-       {/* Name Tag Floating Above */}
-       <Text position={[0, 4, 0]} fontSize={2} color="white" anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#000">
-          Sean Ogta Goh
-       </Text>
-    </group>
-  )
-}
-
+// --- CENTRAL STAR ---
 function CentralStar({ section }: { section?: Section }) {
   const shellRef = useRef<THREE.Mesh>(null);
   useFrame((state) => {
@@ -493,12 +461,42 @@ function CentralStar({ section }: { section?: Section }) {
   );
 }
 
+// --- ISS COMPONENT (For Outer View) ---
+function InternationalSpaceStation() {
+  const ref = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    if (ref.current) {
+      ref.current.rotation.y = state.clock.elapsedTime * 0.05;
+      ref.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.05) * 0.05;
+    }
+  });
+
+  return (
+    <group ref={ref} scale={0.8} rotation={[0.2, 0, 0]}>
+       <Cylinder args={[0.5, 0.5, 4, 16]} rotation={[Math.PI/2, 0, 0]} position={[0, 0, -2]}><meshStandardMaterial color="#d0d0d0" metalness={0.7} roughness={0.2} /></Cylinder>
+       <Cylinder args={[0.6, 0.6, 5, 16]} rotation={[Math.PI/2, 0, 0]} position={[0, 0, 2]}><meshStandardMaterial color="#e0e0e0" metalness={0.8} roughness={0.2} /></Cylinder>
+       <Sphere args={[0.7]} position={[0, 0, 0]}><meshStandardMaterial color="#a0a0a0" metalness={0.6} /></Sphere>
+       <Box args={[18, 0.4, 0.4]} position={[0, 0, 0]}><meshStandardMaterial color="#555" metalness={0.5} /></Box>
+       <group position={[-6, 0, 0]}>
+          <Cylinder args={[0.3, 0.3, 1]} rotation={[0, 0, Math.PI/2]}><meshStandardMaterial color="#444" /></Cylinder>
+          <Box args={[3, 0.05, 8]} position={[0, 0, 0]} rotation={[0.4, 0, 0]}><meshStandardMaterial color="#1a237e" metalness={0.9} roughness={0.2} emissive="#0d1b3e" emissiveIntensity={0.2} /></Box>
+          <Box args={[3.05, 0.06, 8.05]} position={[0, 0, 0]} rotation={[0.4, 0, 0]}><meshBasicMaterial color="#000" wireframe opacity={0.2} transparent /></Box>
+       </group>
+       <group position={[6, 0, 0]}>
+          <Cylinder args={[0.3, 0.3, 1]} rotation={[0, 0, Math.PI/2]}><meshStandardMaterial color="#444" /></Cylinder>
+          <Box args={[3, 0.05, 8]} position={[0, 0, 0]} rotation={[0.4, 0, 0]}><meshStandardMaterial color="#1a237e" metalness={0.9} roughness={0.2} emissive="#0d1b3e" emissiveIntensity={0.2} /></Box>
+          <Box args={[3.05, 0.06, 8.05]} position={[0, 0, 0]} rotation={[0.4, 0, 0]}><meshBasicMaterial color="#000" wireframe opacity={0.2} transparent /></Box>
+       </group>
+       <Text position={[0, 4, 0]} fontSize={2} color="white" anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#000">Sean Ogta Goh</Text>
+    </group>
+  )
+}
+
 function SystemDetails({ activeSection, planets, onPlanetClick }: any) {
   return (
     <group>
-      {/* Inner system still uses the Star (Sun) */}
       <CentralStar section={activeSection} />
-      {planets.map((planet: any, idx: number) => (
+      {planets.map((planet: Planet, idx: number) => (
         <OrbitingPlanetSystem
           key={planet.id}
           planet={planet}
@@ -519,7 +517,7 @@ function GalaxyScene({ activeSection, onSectionClick, view, planets, onPlanetCli
       <BackgroundImage />
       <ParticleField /> 
       {view === 'galaxy' ? (
-        // MAIN VIEW: ISS + Orbiting Galaxies
+        // OUTER VIEW: ISS + Spiral Galaxies
         <>
           <InternationalSpaceStation />
           {sections.map((section, idx) => (
@@ -533,10 +531,9 @@ function GalaxyScene({ activeSection, onSectionClick, view, planets, onPlanetCli
           ))}
         </>
       ) : (
-        // INNER VIEW: Section Star + Orbiting Planets
+        // INNER VIEW: Sun + Solid Planets
         <SystemDetails activeSection={activeSection!} planets={planets} onPlanetClick={onPlanetClick} />
       )}
-      
       <Stars radius={400} depth={50} count={2000} factor={4} saturation={0} fade speed={1} />
     </>
   );
@@ -589,7 +586,6 @@ export default function AnimatedPortfolio({ introPlaying = false }: { introPlayi
       const y = Math.sin(idx) * 4;
       const target = currentPos ?? new THREE.Vector3(Math.cos(phase) * radius, y, Math.sin(phase) * radius);
       
-      // Zoom in transition
       gsap.to(controlsRef.current.target, { x: target.x, y: target.y, z: target.z, duration: 2.5, ease: "power3.inOut" });
       const offset = target.clone().normalize().multiplyScalar(15);
       const camPos = target.clone().add(new THREE.Vector3(offset.x, 5, offset.z)); 
@@ -651,7 +647,7 @@ export default function AnimatedPortfolio({ introPlaying = false }: { introPlayi
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 transition-opacity duration-1000 opacity-100">
           <div className="text-center space-y-3">
             <p className="text-white/70 text-sm bg-black/50 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 font-medium">
-              🌌 You are the Central Star • Orbiting Galaxies are your Skills • Click to Explore
+              🌌 You are the ISS • Orbiting Galaxies are your Skills • Click to Explore
             </p>
           </div>
         </div>
