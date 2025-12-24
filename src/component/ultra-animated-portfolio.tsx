@@ -1,30 +1,13 @@
 import { Suspense, useRef, useState, useMemo, useEffect, useLayoutEffect } from 'react';
-import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
-import { Text, Stars, OrbitControls, Environment, Sparkles, Trail, Sphere, MeshDistortMaterial, RoundedBox, Cylinder } from '@react-three/drei';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Text, Stars, OrbitControls, MeshDistortMaterial, Cylinder, Sphere, Box } from '@react-three/drei';
 import {
-  Menu, X, Zap, Music, Heart, Target, Trophy, Briefcase, ArrowRight, Sparkles as SparklesIcon, ArrowLeft, ExternalLink
+  Menu, X, Zap, Music, Heart, Target, Trophy, Briefcase, ArrowRight, Sparkles as SparklesIcon, ArrowLeft
 } from 'lucide-react';
 import * as THREE from 'three';
 import gsap from 'gsap';
 
-// --- SHADERS ---
-const vertexShader = `
-  varying vec3 vNormal;
-  void main() {
-    vNormal = normalize( normalMatrix * normal );
-    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
-  }
-`;
-
-const fragmentShader = `
-  varying vec3 vNormal;
-  uniform vec3 glowColor;
-  void main() {
-    float intensity = pow( 0.6 - dot( vNormal, vec3( 0.0, 0.0, 1.0 ) ), 2.0 );
-    gl_FragColor = vec4( glowColor, 1.0 ) * intensity * 0.8;
-  }
-`;
-
+// --- DATA TYPES ---
 type PlanetType = 'gas' | 'rocky' | 'ringed' | 'ice';
 
 interface Planet {
@@ -51,7 +34,7 @@ interface Section {
   };
 }
 
-// --- DATA: CLEAN & FOCUSED ---
+// --- CONTENT DATA ---
 const sections: Section[] = [
   {
     id: 'engineering',
@@ -159,35 +142,26 @@ const sections: Section[] = [
 
 // --- 3D UTILS ---
 
-function BackgroundImage() {
-  const texture = useLoader(THREE.TextureLoader, "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=2048&auto=format&fit=crop");
-  return (
-    <mesh>
-      <sphereGeometry args={[800, 64, 64]} />
-      <meshBasicMaterial map={texture} side={THREE.BackSide} transparent={true} opacity={0.5} />
-    </mesh>
-  );
-}
-
+// REPLACED IMAGE LOADER WITH PROCEDURAL STARS TO FIX CRASH
 function ParticleField() {
   const particles = useRef<THREE.Points>(null);
-  const count = 2000;
+  const count = 3000;
   
   const [positions, colors] = useMemo(() => {
     const pos = new Float32Array(count * 3);
     const col = new Float32Array(count * 3);
     for (let i = 0; i < count * 3; i += 3) {
-      pos[i] = (Math.random() - 0.5) * 400;
-      pos[i + 1] = (Math.random() - 0.5) * 400;
-      pos[i + 2] = (Math.random() - 0.5) * 400;
-      col[i] = col[i+1] = col[i+2] = 1; 
+      pos[i] = (Math.random() - 0.5) * 600;
+      pos[i + 1] = (Math.random() - 0.5) * 600;
+      pos[i + 2] = (Math.random() - 0.5) * 600;
+      col[i] = col[i+1] = col[i+2] = Math.random(); 
     }
     return [pos, col];
   }, []);
 
   useFrame((state) => {
     if (particles.current) {
-      particles.current.rotation.y = state.clock.elapsedTime * 0.02;
+      particles.current.rotation.y = state.clock.elapsedTime * 0.01;
     }
   });
 
@@ -197,7 +171,7 @@ function ParticleField() {
         <bufferAttribute attach="attributes-position" count={count} array={positions} itemSize={3} />
         <bufferAttribute attach="attributes-color" count={count} array={colors} itemSize={3} />
       </bufferGeometry>
-      <pointsMaterial size={0.3} vertexColors transparent opacity={0.4} sizeAttenuation />
+      <pointsMaterial size={0.5} vertexColors transparent opacity={0.6} sizeAttenuation />
     </points>
   );
 }
@@ -491,7 +465,7 @@ export default function AnimatedPortfolio({ introPlaying = false }: { introPlayi
     // Focus camera on the clicked planet
     if (controlsRef.current) {
       gsap.to(controlsRef.current.target, { x: pos.x, y: pos.y, z: pos.z, duration: 1.5, ease: "power2.out" });
-      const offset = pos.clone().normalize().multiplyScalar(8); // Get closer
+      const offset = pos.clone().normalize().multiplyScalar(8); 
       const camPos = pos.clone().add(new THREE.Vector3(offset.x, 2, offset.z));
       gsap.to(controlsRef.current.object.position, { x: camPos.x, y: camPos.y, z: camPos.z, duration: 1.5, ease: "power2.out" });
     }
