@@ -1,30 +1,13 @@
 import { Suspense, useRef, useState, useMemo, useEffect, useLayoutEffect } from 'react';
-import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
-import { Text, Stars, OrbitControls, Environment, Sparkles, Trail, Sphere, MeshDistortMaterial, Torus } from '@react-three/drei';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Text, Stars, OrbitControls, Environment, Sparkles, MeshDistortMaterial, RoundedBox } from '@react-three/drei';
 import {
   Menu, X, Zap, Music, Heart, Target, Trophy, Briefcase, ArrowRight, Sparkles as SparklesIcon, ArrowLeft
 } from 'lucide-react';
 import * as THREE from 'three';
 import gsap from 'gsap';
 
-// --- SHADERS ---
-const vertexShader = `
-  varying vec3 vNormal;
-  void main() {
-    vNormal = normalize( normalMatrix * normal );
-    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
-  }
-`;
-
-const fragmentShader = `
-  varying vec3 vNormal;
-  uniform vec3 glowColor;
-  void main() {
-    float intensity = pow( 0.6 - dot( vNormal, vec3( 0.0, 0.0, 1.0 ) ), 2.0 );
-    gl_FragColor = vec4( glowColor, 1.0 ) * intensity * 0.8;
-  }
-`;
-
+// --- DATA TYPES ---
 type PlanetType = 'gas' | 'rocky' | 'ringed' | 'ice';
 
 interface Planet {
@@ -33,8 +16,8 @@ interface Planet {
   color: string;
   darkColor: string;
   detail?: string;
-  type: PlanetType; // New: Defines the visual style
-  size: number;     // New: Defines relative size
+  type: PlanetType;
+  size: number;
 }
 
 interface Section {
@@ -52,6 +35,7 @@ interface Section {
   };
 }
 
+// --- CONTENT DATA ---
 const sections: Section[] = [
   {
     id: 'engineering',
@@ -64,32 +48,13 @@ const sections: Section[] = [
       heading: 'Sustainable Infrastructure Engineer',
       description: 'Specialized in Railway Engineering & Power Systems',
       planets: [
-        { 
-          id: 'p1', title: 'B.Eng. Sustainable Infrastructure', color: '#38bdf8', darkColor: '#0c4a6e', type: 'ringed', size: 2.2,
-          detail: "Graduated with Honours with Merit from the Singapore Institute of Technology (SIT)."
-        },
-        { 
-          id: 'p2', title: 'Diploma in Electrical Engineering', color: '#0284c7', darkColor: '#0c4a6e', type: 'rocky', size: 1.5,
-          detail: "Obtained a Diploma from Ngee Ann Polytechnic with a specialisation in Electrical Power Engineering."
-        },
-        { 
-          id: 'p3', title: 'RailTech Grand Challenge Champion', color: '#7dd3fc', darkColor: '#0c4a6e', type: 'gas', size: 2.5,
-          detail: "Achieved 1st Place (Champion) in the Open Innovation Challenge at the Singapore RailTech Grand Challenge (SGRTGC) 2024."
-        },
-        { 
-          id: 'p4', title: 'LoRaWAN Safety Tracker', color: '#bae6fd', darkColor: '#0c4a6e', type: 'rocky', size: 1.2,
-          detail: "Designed and prototyped a LoRaWAN tracking and emergency alert system."
-        },
-        { 
-          id: 'p5', title: 'Published Academic Papers', color: '#0ea5e9', darkColor: '#0c4a6e', type: 'ice', size: 1.0,
-          detail: "Co-authored multiple conference papers on railway safety technology."
-        },
-        { 
-          id: 'p6', title: 'Siemens AG Internship', color: '#0369a1', darkColor: '#0c4a6e', type: 'ringed', size: 1.8,
-          detail: "Managed the renewal of rail communications systems."
-        }
-      ],
-      highlights: ['Railway Systems', 'Power Distribution', 'Infrastructure Design']
+        { id: 'p1', title: 'B.Eng. Sustainable Infra', color: '#38bdf8', darkColor: '#0c4a6e', type: 'ringed', size: 2.2, detail: "Graduated with Honours with Merit from SIT." },
+        { id: 'p2', title: 'Diploma Electrical Eng', color: '#0284c7', darkColor: '#0c4a6e', type: 'rocky', size: 1.5, detail: "Specialisation in Electrical Power Engineering." },
+        { id: 'p3', title: 'RailTech Champion', color: '#7dd3fc', darkColor: '#0c4a6e', type: 'gas', size: 2.5, detail: "1st Place in Singapore RailTech Grand Challenge 2024." },
+        { id: 'p4', title: 'LoRaWAN Tracker', color: '#bae6fd', darkColor: '#0c4a6e', type: 'rocky', size: 1.2, detail: "Prototyped safety tracker for railway tunnels." },
+        { id: 'p5', title: 'Academic Papers', color: '#0ea5e9', darkColor: '#0c4a6e', type: 'ice', size: 1.0, detail: "Published works in ICCAR and IEEE SOLI." },
+        { id: 'p6', title: 'Siemens Internship', color: '#0369a1', darkColor: '#0c4a6e', type: 'ringed', size: 1.8, detail: "Managed rail comms renewal projects." }
+      ]
     }
   },
   {
@@ -100,17 +65,14 @@ const sections: Section[] = [
     darkColor: '#831843',
     icon: Music,
     content: {
-      heading: 'Musician & Performer',
-      description: 'Trained violinist with vocal capabilities',
+      heading: 'Musician',
+      description: 'Violinist & Vocalist',
       planets: [
-        { id: 'm1', title: 'Classical Violin', color: '#f472b6', darkColor: '#831843', type: 'ringed', size: 2.0, detail: "Trained in classical violin performance." },
-        { id: 'm2', title: 'Vocal Performance', color: '#fb7185', darkColor: '#831843', type: 'gas', size: 2.4, detail: "Experienced in vocal training and performance." },
-        { id: 'm3', title: 'Voice-Over Work', color: '#fbcfe8', darkColor: '#831843', type: 'rocky', size: 1.3, detail: "Provided voice-over work for media." },
-        { id: 'm4', title: 'Studio Recording', color: '#db2777', darkColor: '#831843', type: 'ice', size: 1.5, detail: "Studio recording experience." },
-        { id: 'm5', title: 'Music Production', color: '#be185d', darkColor: '#831843', type: 'rocky', size: 1.4, detail: "Skilled in music production." },
-        { id: 'm6', title: 'ABRSM Grade 8', color: '#9d174d', darkColor: '#831843', type: 'ringed', size: 1.8, detail: "Certified with ABRSM Grade 8 Music Theory." },
-      ],
-      highlights: ['Violin', 'Vocals', 'Performance']
+        { id: 'm1', title: 'Violin', color: '#f472b6', darkColor: '#831843', type: 'ringed', size: 2.0, detail: "Classical training." },
+        { id: 'm2', title: 'Vocals', color: '#fb7185', darkColor: '#831843', type: 'gas', size: 2.4, detail: "Professional performance." },
+        { id: 'm3', title: 'Voice-Over', color: '#fbcfe8', darkColor: '#831843', type: 'rocky', size: 1.3, detail: "Media project narration." },
+        { id: 'm6', title: 'Grade 8 Theory', color: '#9d174d', darkColor: '#831843', type: 'ringed', size: 1.8, detail: "ABRSM Certified." },
+      ]
     }
   },
   {
@@ -121,17 +83,12 @@ const sections: Section[] = [
     darkColor: '#7f1d1d',
     icon: Heart,
     content: {
-      heading: 'Psychology & Advisory',
-      description: 'Passionate about understanding and helping others',
+      heading: 'Psychology',
+      description: 'Mentorship & Behavior',
       planets: [
-        { id: 'ps1', title: 'Advisory', color: '#fca5a5', darkColor: '#7f1d1d', type: 'gas', size: 2.2, detail: "Regular advisor for friends and family." },
-        { id: 'ps2', title: 'Mentorship', color: '#f87171', darkColor: '#7f1d1d', type: 'rocky', size: 1.6, detail: "Active in community support." },
-        { id: 'ps3', title: 'Problem Solving', color: '#ef4444', darkColor: '#7f1d1d', type: 'rocky', size: 1.4, detail: "Empathetic problem-solving." },
-        { id: 'ps4', title: 'Development', color: '#dc2626', darkColor: '#7f1d1d', type: 'ice', size: 1.2, detail: "Focused on personal development." },
-        { id: 'ps5', title: 'Conflict Resolution', color: '#b91c1c', darkColor: '#7f1d1d', type: 'rocky', size: 1.5, detail: "Skilled in mediation." },
-        { id: 'ps6', title: 'Psych of Learning', color: '#991b1b', darkColor: '#7f1d1d', type: 'ringed', size: 1.9, detail: "Certified in Psychology of Learning." },
-      ],
-      highlights: ['Mentorship', 'Counseling', 'Development']
+        { id: 'ps1', title: 'Advisory', color: '#fca5a5', darkColor: '#7f1d1d', type: 'gas', size: 2.2, detail: "Personal advisory." },
+        { id: 'ps6', title: 'Psych of Learning', color: '#991b1b', darkColor: '#7f1d1d', type: 'ringed', size: 1.9, detail: "Certified by FedericaX." },
+      ]
     }
   },
   {
@@ -142,17 +99,12 @@ const sections: Section[] = [
     darkColor: '#78350f',
     icon: Briefcase,
     content: {
-      heading: 'Motorsports Enthusiast',
-      description: 'Speed, precision, and engineering excellence',
+      heading: 'Motorsports',
+      description: 'Dynamics & Speed',
       planets: [
-        { id: 'mo1', title: 'Vehicle Dynamics', color: '#fcd34d', darkColor: '#78350f', type: 'ringed', size: 2.5, detail: "Deep interest in vehicle dynamics." },
-        { id: 'mo2', title: 'Racing Strategy', color: '#fbbf24', darkColor: '#78350f', type: 'gas', size: 2.0, detail: "Interest in racing strategy." },
-        { id: 'mo3', title: 'High Performance', color: '#f59e0b', darkColor: '#78350f', type: 'rocky', size: 1.6, detail: "High-performance engineering." },
-        { id: 'mo4', title: 'Tech Innovation', color: '#d97706', darkColor: '#78350f', type: 'ice', size: 1.3, detail: "Motorsports technology." },
-        { id: 'mo5', title: 'Precision & Speed', color: '#b45309', darkColor: '#78350f', type: 'rocky', size: 1.4, detail: "Passion for precision." },
-        { id: 'mo6', title: 'Drivers License', color: '#92400e', darkColor: '#78350f', type: 'ringed', size: 1.7, detail: "Class 3 Drivers License." },
-      ],
-      highlights: ['Performance', 'Dynamics', 'Racing']
+        { id: 'mo1', title: 'Vehicle Dynamics', color: '#fcd34d', darkColor: '#78350f', type: 'ringed', size: 2.5, detail: "Engineering interest." },
+        { id: 'mo6', title: 'Drivers License', color: '#92400e', darkColor: '#78350f', type: 'ringed', size: 1.7, detail: "Class 3 License." },
+      ]
     }
   },
   {
@@ -163,17 +115,12 @@ const sections: Section[] = [
     darkColor: '#064e3b',
     icon: Target,
     content: {
-      heading: 'Archery Practice',
-      description: 'Focus, discipline, and precision mastery',
+      heading: 'Archery',
+      description: 'Focus & Precision',
       planets: [
-        { id: 'a1', title: 'Varsity Archer', color: '#4ade80', darkColor: '#064e3b', type: 'rocky', size: 1.5, detail: "Varsity team member." },
-        { id: 'a2', title: 'Half-Colours Award', color: '#22c55e', darkColor: '#064e3b', type: 'ringed', size: 2.1, detail: "Received Half-Colours Award." },
-        { id: 'a3', title: 'Discipline', color: '#16a34a', darkColor: '#064e3b', type: 'ice', size: 1.2, detail: "Mental discipline." },
-        { id: 'a4', title: 'Mental Focus', color: '#15803d', darkColor: '#064e3b', type: 'gas', size: 2.3, detail: "Focus training." },
-        { id: 'a5', title: 'Precision', color: '#166534', darkColor: '#064e3b', type: 'rocky', size: 1.4, detail: "Precision accuracy." },
-        { id: 'a6', title: 'Continuous Improvement', color: '#14532d', darkColor: '#064e3b', type: 'rocky', size: 1.6, detail: "Philosophy of improvement." }
-      ],
-      highlights: ['Precision', 'Focus', 'Discipline']
+        { id: 'a1', title: 'Varsity Archer', color: '#4ade80', darkColor: '#064e3b', type: 'rocky', size: 1.5, detail: "SIT & NP Teams." },
+        { id: 'a2', title: 'Half-Colours', color: '#22c55e', darkColor: '#064e3b', type: 'ringed', size: 2.1, detail: "Awarded for excellence." },
+      ]
     }
   },
   {
@@ -184,71 +131,58 @@ const sections: Section[] = [
     darkColor: '#713f12',
     icon: Trophy,
     content: {
-      heading: 'Multi-Disciplinary Excellence',
-      description: 'Combining technical expertise with creative passion',
+      heading: 'Awards',
+      description: 'Excellence & Service',
       planets: [
-        { id: 'ac1', title: 'Lean Six Sigma', color: '#fef08a', darkColor: '#713f12', type: 'ringed', size: 2.4, detail: "Green Belt Certified." },
-        { id: 'ac2', title: 'Professional Certs', color: '#fde047', darkColor: '#713f12', type: 'gas', size: 2.0, detail: "Various professional certifications." },
-        { id: 'ac3', title: 'SAF Ammunition', color: '#eab308', darkColor: '#713f12', type: 'rocky', size: 1.6, detail: "Ammunition Reliability SO." },
-        { id: 'ac4', title: 'Digital I/C', color: '#ca8a04', darkColor: '#713f12', type: 'ice', size: 1.3, detail: "Digital-In-Charge." },
-        { id: 'ac5', title: 'ST Eng. Internship', color: '#a16207', darkColor: '#713f12', type: 'rocky', size: 1.5, detail: "Installation Engineer Intern." },
-        { id: 'ac6', title: 'Multidisciplinary', color: '#854d0e', darkColor: '#713f12', type: 'ringed', size: 1.8, detail: "Bridging disciplines." }
-      ],
-      highlights: ['Excellence', 'Leadership', 'Innovation']
+        { id: 'ac1', title: 'Lean Six Sigma', color: '#fef08a', darkColor: '#713f12', type: 'ringed', size: 2.4, detail: "Green Belt." },
+        { id: 'ac3', title: 'SAF Ammo SO', color: '#eab308', darkColor: '#713f12', type: 'rocky', size: 1.6, detail: "Ammunition Reliability Officer." },
+      ]
     }
   }
 ];
 
+// --- 3D COMPONENTS ---
+
 function ParticleField() {
   const particles = useRef<THREE.Points>(null);
+  const count = 2000;
   
+  const [positions, colors] = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    const col = new Float32Array(count * 3);
+    for (let i = 0; i < count * 3; i += 3) {
+      pos[i] = (Math.random() - 0.5) * 400;
+      pos[i + 1] = (Math.random() - 0.5) * 400;
+      pos[i + 2] = (Math.random() - 0.5) * 400;
+      col[i] = col[i+1] = col[i+2] = 1; 
+    }
+    return [pos, col];
+  }, []);
+
   useFrame((state) => {
     if (particles.current) {
-      particles.current.rotation.x = state.clock.elapsedTime * 0.0001;
-      particles.current.rotation.y = state.clock.elapsedTime * 0.0002;
+      particles.current.rotation.y = state.clock.elapsedTime * 0.02;
     }
   });
 
-  const geometry = useMemo(() => {
-    const geo = new THREE.BufferGeometry();
-    const count = 3000;
-    const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
-
-    for (let i = 0; i < count * 3; i += 3) {
-      positions[i] = (Math.random() - 0.5) * 400;
-      positions[i + 1] = (Math.random() - 0.5) * 400;
-      positions[i + 2] = (Math.random() - 0.5) * 400;
-      colors[i] = 1; colors[i+1] = 1; colors[i+2] = 1;
-    }
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    return geo;
-  }, []);
-
   return (
-    <points ref={particles} geometry={geometry}>
-      <pointsMaterial size={0.3} vertexColors sizeAttenuation transparent opacity={0.4} blending={THREE.AdditiveBlending} />
+    <points ref={particles}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" count={count} array={positions} itemSize={3} />
+        <bufferAttribute attach="attributes-color" count={count} array={colors} itemSize={3} />
+      </bufferGeometry>
+      <pointsMaterial size={0.3} vertexColors transparent opacity={0.4} sizeAttenuation />
     </points>
-  );
-}
-
-function BackgroundImage() {
-  const texture = useLoader(THREE.TextureLoader, "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=2048&auto=format&fit=crop");
-  return (
-    <mesh>
-      <sphereGeometry args={[800, 64, 64]} />
-      <meshBasicMaterial map={texture} side={THREE.BackSide} transparent={true} opacity={0.6} />
-    </mesh>
   );
 }
 
 function SpiralGalaxy({ color, radius = 3 }: { color: string, radius?: number }) {
   const pointsRef = useRef<THREE.Points>(null);
-  const galaxyParameters = useMemo(() => {
-    const count = 2500;
-    const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
+  
+  const [positions, colors] = useMemo(() => {
+    const count = 1500;
+    const pos = new Float32Array(count * 3);
+    const col = new Float32Array(count * 3);
     const galaxyColor = new THREE.Color(color);
 
     for(let i = 0; i < count; i++) {
@@ -257,149 +191,118 @@ function SpiralGalaxy({ color, radius = 3 }: { color: string, radius?: number })
       const spinAngle = r * 5;
       const branchAngle = (i % 3) * ((Math.PI * 2) / 3);
       
-      const randomX = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 0.5 * r;
-      const randomY = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 0.5 * r;
-      const randomZ = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 0.5 * r;
+      const randomX = (Math.random() - 0.5) * 0.5 * r;
+      const randomY = (Math.random() - 0.5) * 0.2 * r;
+      const randomZ = (Math.random() - 0.5) * 0.5 * r;
 
-      positions[i3] = Math.cos(branchAngle + spinAngle) * r + randomX;
-      positions[i3 + 1] = randomY * 0.8;
-      positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * r + randomZ;
+      pos[i3] = Math.cos(branchAngle + spinAngle) * r + randomX;
+      pos[i3 + 1] = randomY;
+      pos[i3 + 2] = Math.sin(branchAngle + spinAngle) * r + randomZ;
 
       const mixedColor = galaxyColor.clone().lerp(new THREE.Color("white"), 1 / r);
-      colors[i3] = mixedColor.r;
-      colors[i3 + 1] = mixedColor.g;
-      colors[i3 + 2] = mixedColor.b;
+      col[i3] = mixedColor.r;
+      col[i3 + 1] = mixedColor.g;
+      col[i3 + 2] = mixedColor.b;
     }
-    return { positions, colors };
+    return [pos, col];
   }, [color, radius]);
 
-  useFrame((state) => {
-    if (pointsRef.current) {
-      pointsRef.current.rotation.y += 0.005;
-    }
+  useFrame(() => {
+    if (pointsRef.current) pointsRef.current.rotation.y += 0.002;
   });
 
   return (
     <group>
       <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" count={galaxyParameters.positions.length / 3} array={galaxyParameters.positions} itemSize={3} />
-          <bufferAttribute attach="attributes-color" count={galaxyParameters.colors.length / 3} array={galaxyParameters.colors} itemSize={3} />
+          <bufferAttribute attach="attributes-position" count={positions.length / 3} array={positions} itemSize={3} />
+          <bufferAttribute attach="attributes-color" count={colors.length / 3} array={colors} itemSize={3} />
         </bufferGeometry>
-        <pointsMaterial size={0.35} sizeAttenuation={true} depthWrite={false} vertexColors={true} blending={THREE.AdditiveBlending} transparent={true} opacity={0.9} />
+        <pointsMaterial size={0.2} sizeAttenuation vertexColors transparent opacity={0.8} blending={THREE.AdditiveBlending} depthWrite={false} />
       </points>
+      {/* Core Glow */}
       <mesh>
-        <sphereGeometry args={[0.8, 16, 16]} />
-        <meshBasicMaterial color={color} transparent opacity={0.8} blur={0.5} />
+        <sphereGeometry args={[0.5, 16, 16]} />
+        <meshBasicMaterial color={color} transparent opacity={0.6} />
       </mesh>
-      <pointLight distance={15} intensity={3} color={color} />
+      <pointLight distance={10} intensity={2} color={color} />
     </group>
   );
 }
 
-// --- NEW COMPONENT: Varied Planet Mesh ---
 function VariedPlanetMesh({ type, color, size }: { type: PlanetType, color: string, size: number }) {
   const meshRef = useRef<THREE.Mesh>(null);
-  
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y += 0.005;
-    }
-  });
+  useFrame(() => { if (meshRef.current) meshRef.current.rotation.y += 0.005; });
 
-  // Common Geometry: Sphere
-  // Distort/Roughness varies by type
-  let distort = 0;
-  let roughness = 0.5;
-  let metalness = 0.1;
-  let speed = 0;
-
-  if (type === 'gas') {
-    distort = 0.6; // Swirly
-    speed = 3;
-    roughness = 0.8;
-  } else if (type === 'rocky') {
-    distort = 0.2; // Bumpy
-    speed = 0.5;
-    roughness = 0.9;
-  } else if (type === 'ice') {
-    distort = 0.1;
-    speed = 1;
-    roughness = 0.1; // Shiny
-    metalness = 0.8;
-  } else if (type === 'ringed') {
-    distort = 0.3;
-    speed = 2;
-    roughness = 0.6;
-  }
+  let distort = 0, roughness = 0.5, metalness = 0.1, speed = 0;
+  if (type === 'gas') { distort = 0.5; speed = 2; roughness = 0.8; }
+  else if (type === 'rocky') { distort = 0.15; speed = 0.5; roughness = 0.9; }
+  else if (type === 'ice') { distort = 0.1; speed = 1; roughness = 0.1; metalness = 0.8; }
+  else if (type === 'ringed') { distort = 0.2; speed = 1.5; roughness = 0.6; }
 
   return (
     <group scale={size}>
-      {/* The Planet Body */}
       <mesh ref={meshRef}>
         <sphereGeometry args={[1, 64, 64]} />
-        <MeshDistortMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={0.1}
-          roughness={roughness}
-          metalness={metalness}
-          distort={distort}
-          speed={speed}
-        />
+        <MeshDistortMaterial color={color} emissive={color} emissiveIntensity={0.2} roughness={roughness} metalness={metalness} distort={distort} speed={speed} />
       </mesh>
-
-      {/* Optional Ring */}
       {type === 'ringed' && (
         <mesh rotation={[Math.PI / 2.5, 0, 0]}>
-          <ringGeometry args={[1.4, 2.2, 64]} />
-          <meshBasicMaterial color={color} transparent opacity={0.5} side={THREE.DoubleSide} />
+          <ringGeometry args={[1.4, 2.0, 64]} />
+          <meshBasicMaterial color={color} transparent opacity={0.4} side={THREE.DoubleSide} />
         </mesh>
       )}
     </group>
   );
 }
 
-function OrbitingGalaxySystem({ section, onClick, isActive, orbit }: any) {
+function OrbitingGalaxySystem({ section, onClick }: any) {
   const groupRef = useRef<THREE.Group>(null);
   
   useFrame((state) => {
-    if (groupRef.current && orbit) {
-      const angle = state.clock.elapsedTime * orbit.speed + orbit.phase;
-      const y = orbit.y ?? section.position[1] ?? 0;
-      groupRef.current.position.set(Math.cos(angle) * orbit.radius, y, Math.sin(angle) * orbit.radius);
+    // Determine orbit based on index in array
+    const idx = sections.findIndex(s => s.id === section.id);
+    const radius = 18 + idx * 8;
+    const speed = 0.05 + idx * 0.01;
+    const angle = state.clock.elapsedTime * speed + (idx * 2);
+    const y = Math.sin(idx * 3) * 4;
+    
+    if (groupRef.current) {
+      groupRef.current.position.set(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
     }
   });
 
   return (
-    <group ref={groupRef} position={section.position}>
+    <group ref={groupRef}>
       <mesh 
         visible={false} 
-        onClick={(e) => { e.stopPropagation(); onClick(groupRef.current ? groupRef.current.position.clone() : new THREE.Vector3(...section.position)); }}
-        onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
-        onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+        onClick={(e) => { e.stopPropagation(); onClick(groupRef.current ? groupRef.current.position.clone() : new THREE.Vector3()); }}
+        onPointerOver={() => document.body.style.cursor = 'pointer'}
+        onPointerOut={() => document.body.style.cursor = 'auto'}
       >
         <sphereGeometry args={[4]} />
         <meshBasicMaterial color="red" />
       </mesh>
       
       <SpiralGalaxy color={section.color} radius={4} />
-
-      <Text position={[0, 4.5, 0]} fontSize={3} color="white" anchorX="center" anchorY="middle" outlineWidth={0.2} outlineColor="#000">
+      <Text position={[0, 4.5, 0]} fontSize={2.5} color="white" anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#000">
         {section.title}
       </Text>
     </group>
   );
 }
 
-// --- UPDATED INNER SYSTEM: Using Varied Planets ---
-function OrbitingPlanetSystem({ planet, onClick, isActive, orbit }: { planet: Planet, onClick: any, isActive: boolean, orbit: any }) {
+function OrbitingPlanetSystem({ planet, onClick, idx, total }: any) {
   const groupRef = useRef<THREE.Group>(null);
   
   useFrame((state) => {
-    if (groupRef.current && orbit) {
-      const angle = state.clock.elapsedTime * orbit.speed + orbit.phase;
-      groupRef.current.position.set(Math.cos(angle) * orbit.radius, 0, Math.sin(angle) * orbit.radius);
+    const radius = 12 + idx * 4;
+    const speed = 0.2 - idx * 0.02;
+    const phase = idx * ((Math.PI * 2) / total);
+    const angle = state.clock.elapsedTime * speed + phase;
+    
+    if (groupRef.current) {
+      groupRef.current.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
     }
   });
 
@@ -408,103 +311,71 @@ function OrbitingPlanetSystem({ planet, onClick, isActive, orbit }: { planet: Pl
       <mesh 
         visible={false} 
         onClick={(e) => { e.stopPropagation(); onClick(planet); }}
-        onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
-        onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+        onPointerOver={() => document.body.style.cursor = 'pointer'}
+        onPointerOut={() => document.body.style.cursor = 'auto'}
       >
-        <sphereGeometry args={[planet.size * 1.5]} /> {/* Hitbox relative to size */}
+        <sphereGeometry args={[planet.size * 1.2]} />
         <meshBasicMaterial color="red" />
       </mesh>
 
-      {/* Use the new Varied Component */}
-      <VariedPlanetMesh 
-        type={planet.type} 
-        color={planet.color} 
-        size={planet.size} 
-      />
-
-      <Text position={[0, planet.size + 1.5, 0]} fontSize={1} color="white" anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#000">
+      <VariedPlanetMesh type={planet.type} color={planet.color} size={planet.size} />
+      <Text position={[0, planet.size + 1.2, 0]} fontSize={1} color="white" anchorX="center" anchorY="middle" outlineWidth={0.05} outlineColor="#000">
         {planet.title}
       </Text>
     </group>
   );
 }
 
-// --- CENTRAL STAR ---
-function CentralStar({ section }: { section?: Section }) {
-  const shellRef = useRef<THREE.Mesh>(null);
-  useFrame((state) => {
-    if (shellRef.current) {
-      shellRef.current.rotation.y += 0.005;
-      shellRef.current.rotation.z += 0.002;
-    }
-  });
-
-  const title = section ? section.title : 'Sean Ogta Goh';
-  const color = section ? section.color : '#fbbf24'; 
-  const emissive = section ? section.color : '#d97706'; 
-
-  return (
-    <group position={[0, 0, 0]}>
-      <mesh>
-        <sphereGeometry args={[4.5, 64, 64]} />
-        <MeshDistortMaterial color={color} emissive={emissive} emissiveIntensity={3} roughness={0} metalness={0.2} distort={0.3} speed={2} />
-      </mesh>
-      <mesh ref={shellRef}>
-        <icosahedronGeometry args={[5.2, 2]} />
-        <meshBasicMaterial color={emissive} transparent opacity={0.1} wireframe />
-      </mesh>
-      <pointLight intensity={5} distance={50} color={color} />
-      <Text position={[0, 7.5, 0]} fontSize={4} fontWeight="bold" color="white" anchorX="center" anchorY="middle" outlineWidth={0.2} outlineColor="#000000">
-        {title}
-      </Text>
-    </group>
-  );
-}
-
-// --- ISS COMPONENT (For Outer View) ---
 function InternationalSpaceStation() {
   const ref = useRef<THREE.Group>(null);
   useFrame((state) => {
     if (ref.current) {
       ref.current.rotation.y = state.clock.elapsedTime * 0.05;
-      ref.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.05) * 0.05;
+      ref.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.1) * 0.05;
     }
   });
 
   return (
     <group ref={ref} scale={0.8} rotation={[0.2, 0, 0]}>
-       <Cylinder args={[0.5, 0.5, 4, 16]} rotation={[Math.PI/2, 0, 0]} position={[0, 0, -2]}><meshStandardMaterial color="#d0d0d0" metalness={0.7} roughness={0.2} /></Cylinder>
-       <Cylinder args={[0.6, 0.6, 5, 16]} rotation={[Math.PI/2, 0, 0]} position={[0, 0, 2]}><meshStandardMaterial color="#e0e0e0" metalness={0.8} roughness={0.2} /></Cylinder>
-       <Sphere args={[0.7]} position={[0, 0, 0]}><meshStandardMaterial color="#a0a0a0" metalness={0.6} /></Sphere>
-       <Box args={[18, 0.4, 0.4]} position={[0, 0, 0]}><meshStandardMaterial color="#555" metalness={0.5} /></Box>
-       <group position={[-6, 0, 0]}>
-          <Cylinder args={[0.3, 0.3, 1]} rotation={[0, 0, Math.PI/2]}><meshStandardMaterial color="#444" /></Cylinder>
-          <Box args={[3, 0.05, 8]} position={[0, 0, 0]} rotation={[0.4, 0, 0]}><meshStandardMaterial color="#1a237e" metalness={0.9} roughness={0.2} emissive="#0d1b3e" emissiveIntensity={0.2} /></Box>
-          <Box args={[3.05, 0.06, 8.05]} position={[0, 0, 0]} rotation={[0.4, 0, 0]}><meshBasicMaterial color="#000" wireframe opacity={0.2} transparent /></Box>
-       </group>
-       <group position={[6, 0, 0]}>
-          <Cylinder args={[0.3, 0.3, 1]} rotation={[0, 0, Math.PI/2]}><meshStandardMaterial color="#444" /></Cylinder>
-          <Box args={[3, 0.05, 8]} position={[0, 0, 0]} rotation={[0.4, 0, 0]}><meshStandardMaterial color="#1a237e" metalness={0.9} roughness={0.2} emissive="#0d1b3e" emissiveIntensity={0.2} /></Box>
-          <Box args={[3.05, 0.06, 8.05]} position={[0, 0, 0]} rotation={[0.4, 0, 0]}><meshBasicMaterial color="#000" wireframe opacity={0.2} transparent /></Box>
-       </group>
-       <Text position={[0, 4, 0]} fontSize={2} color="white" anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#000">Sean Ogta Goh</Text>
+       {/* Body */}
+       <mesh position={[0, 0, 0]} rotation={[0, 0, Math.PI/2]}>
+         <cylinderGeometry args={[0.5, 0.5, 8, 16]} />
+         <meshStandardMaterial color="#ccc" metalness={0.6} roughness={0.3} />
+       </mesh>
+       {/* Crossbar */}
+       <mesh position={[0, 0, 0]}>
+         <boxGeometry args={[18, 0.4, 0.4]} />
+         <meshStandardMaterial color="#666" />
+       </mesh>
+       {/* Solar Arrays */}
+       {[-7, 7].map((x, i) => (
+         <group key={i} position={[x, 0, 0]}>
+            <mesh rotation={[0.5, 0, 0]}>
+               <boxGeometry args={[3, 0.05, 8]} />
+               <meshStandardMaterial color="#1a237e" metalness={0.9} roughness={0.2} emissive="#0d1b3e" emissiveIntensity={0.2} />
+            </mesh>
+         </group>
+       ))}
+       <Text position={[0, 3, 0]} fontSize={2} color="white" anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#000">Sean Ogta Goh</Text>
     </group>
   )
 }
 
-function SystemDetails({ activeSection, planets, onPlanetClick }: any) {
+function CentralStar({ section }: { section?: Section }) {
+  const title = section ? section.title : 'Sean Ogta Goh';
+  const color = section ? section.color : '#fbbf24'; 
+  const emissive = section ? section.color : '#d97706'; 
+
   return (
     <group>
-      <CentralStar section={activeSection} />
-      {planets.map((planet: Planet, idx: number) => (
-        <OrbitingPlanetSystem
-          key={planet.id}
-          planet={planet}
-          onClick={() => onPlanetClick(planet)}
-          isActive={false}
-          orbit={{ radius: 10 + idx * 4, speed: 0.2 - idx * 0.02, phase: idx * ((Math.PI * 2) / planets.length) }}
-        />
-      ))}
+      <mesh>
+        <sphereGeometry args={[4.5, 64, 64]} />
+        <MeshDistortMaterial color={color} emissive={emissive} emissiveIntensity={2} roughness={0.2} metalness={0.1} distort={0.3} speed={2} />
+      </mesh>
+      <pointLight intensity={3} distance={50} color={color} />
+      <Text position={[0, 7, 0]} fontSize={3} fontWeight="bold" color="white" anchorX="center" anchorY="middle" outlineWidth={0.2} outlineColor="#000">
+        {title}
+      </Text>
     </group>
   );
 }
@@ -512,29 +383,38 @@ function SystemDetails({ activeSection, planets, onPlanetClick }: any) {
 function GalaxyScene({ activeSection, onSectionClick, view, planets, onPlanetClick }: any) {
   return (
     <>
-      <ambientLight intensity={0.3} /> 
-      <directionalLight position={[10, 10, 5]} intensity={1.5} />
-      <BackgroundImage />
+      <ambientLight intensity={0.2} /> 
+      <directionalLight position={[10, 10, 5]} intensity={1} />
       <ParticleField /> 
+      
       {view === 'galaxy' ? (
-        // OUTER VIEW: ISS + Spiral Galaxies
         <>
           <InternationalSpaceStation />
-          {sections.map((section, idx) => (
+          {sections.map((section) => (
             <OrbitingGalaxySystem
               key={section.id}
               section={section}
               onClick={(pos: any) => onSectionClick(section, pos)}
-              isActive={activeSection?.id === section.id}
-              orbit={{ radius: 18 + idx * 8, speed: 0.1 + idx * 0.01, phase: idx * ((Math.PI * 2) / sections.length), y: Math.sin(idx) * 4 }}
             />
           ))}
         </>
       ) : (
-        // INNER VIEW: Sun + Solid Planets
-        <SystemDetails activeSection={activeSection!} planets={planets} onPlanetClick={onPlanetClick} />
+        <>
+          <CentralStar section={activeSection} />
+          {planets.map((planet: any, idx: number) => (
+            <OrbitingPlanetSystem
+              key={planet.id}
+              planet={planet}
+              idx={idx}
+              total={planets.length}
+              onClick={() => onPlanetClick(planet)}
+            />
+          ))}
+        </>
       )}
-      <Stars radius={400} depth={50} count={2000} factor={4} saturation={0} fade speed={1} />
+      
+      {/* Background Stars (Replaces Image) */}
+      <Stars radius={300} depth={100} count={3000} factor={6} saturation={0} fade speed={0.5} />
     </>
   );
 }
@@ -552,13 +432,7 @@ function IntroCameraRig({ active }: { active: boolean }) {
   useEffect(() => {
     if (!active && !hasStarted) {
       setHasStarted(true);
-      gsap.to(camera.position, {
-        x: 0,
-        y: 20,
-        z: 40,
-        duration: 4, 
-        ease: "power2.out"
-      });
+      gsap.to(camera.position, { x: 0, y: 30, z: 60, duration: 4, ease: "power2.out" });
     }
   }, [active, camera, hasStarted]);
 
@@ -580,16 +454,17 @@ export default function AnimatedPortfolio({ introPlaying = false }: { introPlayi
     setView('system');
     setPlanets(section.content.planets);
     if (controlsRef.current) {
-      const idx = sections.findIndex((s) => s.id === section.id);
+      // Determine where the galaxy roughly is
+      const idx = sections.findIndex(s => s.id === section.id);
       const radius = 18 + idx * 8;
-      const phase = idx * ((Math.PI * 2) / sections.length);
-      const y = Math.sin(idx) * 4;
-      const target = currentPos ?? new THREE.Vector3(Math.cos(phase) * radius, y, Math.sin(phase) * radius);
-      
-      gsap.to(controlsRef.current.target, { x: target.x, y: target.y, z: target.z, duration: 2.5, ease: "power3.inOut" });
+      const angle = 0 + (idx * 2); // Approximation from Orbiter
+      const y = Math.sin(idx * 3) * 4;
+      const target = new THREE.Vector3(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
+
+      gsap.to(controlsRef.current.target, { x: target.x, y: target.y, z: target.z, duration: 2, ease: "power3.inOut" });
       const offset = target.clone().normalize().multiplyScalar(15);
       const camPos = target.clone().add(new THREE.Vector3(offset.x, 5, offset.z)); 
-      gsap.to(controlsRef.current.object.position, { x: camPos.x, y: camPos.y, z: camPos.z, duration: 2.5, ease: "power3.inOut" });
+      gsap.to(controlsRef.current.object.position, { x: camPos.x, y: camPos.y, z: camPos.z, duration: 2, ease: "power3.inOut" });
     }
   };
 
@@ -602,7 +477,7 @@ export default function AnimatedPortfolio({ introPlaying = false }: { introPlayi
     setPlanets([]);
     if (controlsRef.current) {
       gsap.to(controlsRef.current.target, { x: 0, y: 0, z: 0, duration: 2, ease: "power3.inOut" });
-      gsap.to(controlsRef.current.object.position, { x: 0, y: 20, z: 40, duration: 2, ease: "power3.inOut" });
+      gsap.to(controlsRef.current.object.position, { x: 0, y: 30, z: 60, duration: 2, ease: "power3.inOut" });
     }
   };
 
