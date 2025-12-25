@@ -1,8 +1,8 @@
 import { Suspense, useRef, useState, useMemo, useEffect, useLayoutEffect } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Text, Stars, OrbitControls, MeshDistortMaterial, Cylinder, Sphere, Box } from '@react-three/drei';
+import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
+import { Text, Stars, OrbitControls, Environment, Sparkles, Trail, Sphere, MeshDistortMaterial, RoundedBox, Cylinder } from '@react-three/drei';
 import {
-  Menu, X, Zap, Music, Heart, Target, Trophy, Briefcase, ArrowRight, Sparkles as SparklesIcon, ArrowLeft
+  Menu, X, Zap, Music, Heart, Target, Trophy, Briefcase, ArrowRight, Sparkles as SparklesIcon, ArrowLeft, Calendar, User, Tag
 } from 'lucide-react';
 import * as THREE from 'three';
 import gsap from 'gsap';
@@ -13,11 +13,15 @@ type PlanetType = 'gas' | 'rocky' | 'ringed' | 'ice';
 interface Planet {
   id: string;
   title: string;
+  role?: string;       // New: Subtitle or Role
+  date?: string;       // New: Date range
   color: string;
   darkColor: string;
-  detail?: string;
   type: PlanetType;
   size: number;
+  detail: string;      // The main paragraph
+  tags?: string[];     // New: Skills/Tech stack
+  bullets?: string[];  // New: Key achievements list
 }
 
 interface Section {
@@ -34,7 +38,7 @@ interface Section {
   };
 }
 
-// --- CONTENT DATA ---
+// --- CONTENT DATA (Streamlined & Detailed) ---
 const sections: Section[] = [
   {
     id: 'engineering',
@@ -45,13 +49,41 @@ const sections: Section[] = [
     icon: Zap,
     content: {
       heading: 'System Engineer',
-      description: 'Rail & Power Systems',
+      description: 'Rail Mobility & Power Systems',
       planets: [
-        { id: 'p1', title: 'B.Eng (Honours)', color: '#38bdf8', darkColor: '#0c4a6e', type: 'ringed', size: 2.2, detail: "Graduated with Honours (Merit) in Sustainable Infrastructure Engineering (Land) from SIT." },
-        { id: 'p2', title: 'Power Eng. Diploma', color: '#0284c7', darkColor: '#0c4a6e', type: 'rocky', size: 1.5, detail: "Diploma in Electrical Engineering (Power Specialisation) from Ngee Ann Polytechnic." },
-        { id: 'p3', title: 'RailTech Champion', color: '#7dd3fc', darkColor: '#0c4a6e', type: 'gas', size: 2.5, detail: "1st Place Winner: Singapore RailTech Grand Challenge 2024 (Open Innovation)." },
-        { id: 'p4', title: 'LoRaWAN Tracker', color: '#bae6fd', darkColor: '#0c4a6e', type: 'rocky', size: 1.2, detail: "Designed a safety tracking system for railway tunnels using LoRaWAN technology." },
-        { id: 'p6', title: 'Siemens Internship', color: '#0369a1', darkColor: '#0c4a6e', type: 'ice', size: 1.8, detail: "Managed rail comms renewal, coordinated subcontractors, and designed PA systems." }
+        { 
+          id: 'p1', title: 'Education', role: 'B.Eng & Diploma', date: '2016 - 2024',
+          color: '#38bdf8', darkColor: '#0c4a6e', type: 'ringed', size: 2.2,
+          detail: "A comprehensive academic journey focused on sustainable infrastructure and electrical power systems.",
+          tags: ["SIT", "Ngee Ann Poly", "Power Eng", "Distinction"],
+          bullets: [
+            "B.Eng (Honours with Merit) in Sustainable Infrastructure Engineering (Land) from SIT.",
+            "Diploma in Electrical Engineering (Power Specialisation) from Ngee Ann Polytechnic.",
+            "Active member of IEEE and IES student chapters."
+          ]
+        },
+        { 
+          id: 'p3', title: 'Innovation', role: 'RailTech Champion', date: '2024',
+          color: '#7dd3fc', darkColor: '#0c4a6e', type: 'gas', size: 2.5, 
+          detail: "Spearheaded award-winning solutions for the railway industry, focusing on safety and IoT integration.",
+          tags: ["LoRaWAN", "IoT", "Safety Systems", "Prototyping"],
+          bullets: [
+            "Champion: Singapore RailTech Grand Challenge 2024 (Open Innovation).",
+            "Designed a LoRaWAN Safety Tracker for railway tunnel maintenance.",
+            "Published multiple conference papers (ICCAR, IEEE SOLI)."
+          ]
+        },
+        { 
+          id: 'p6', title: 'Experience', role: 'Internships & Projects', date: '2022 - 2024',
+          color: '#0369a1', darkColor: '#0c4a6e', type: 'ice', size: 1.8, 
+          detail: "Hands-on engineering experience with industry leaders in rail and infrastructure.",
+          tags: ["Siemens AG", "ST Engineering", "Project Mgmt", "Comms"],
+          bullets: [
+            "Siemens AG: Managed rail comms renewal & PA system front-end design.",
+            "ST Engineering: Supervised Platform Screen Door (PSD) installation.",
+            "Conducted root cause analysis on technical incidents."
+          ]
+        }
       ]
     }
   },
@@ -64,61 +96,77 @@ const sections: Section[] = [
     icon: Music,
     content: {
       heading: 'Musician',
-      description: 'Violin & Vocals',
+      description: 'Violin, Vocals & Production',
       planets: [
-        { id: 'm1', title: 'Violinist', color: '#f472b6', darkColor: '#831843', type: 'ringed', size: 2.0, detail: "Classically trained violinist with performance experience." },
-        { id: 'm2', title: 'Vocalist', color: '#fb7185', darkColor: '#831843', type: 'gas', size: 2.4, detail: "Professional vocal training and recording experience." },
-        { id: 'm5', title: 'Production', color: '#be185d', darkColor: '#831843', type: 'rocky', size: 1.4, detail: "Music production, arrangement, and audio engineering skills." },
-        { id: 'm6', title: 'Grade 8 Theory', color: '#9d174d', darkColor: '#831843', type: 'ice', size: 1.8, detail: "ABRSM Grade 8 Music Theory Certification." },
+        { 
+          id: 'm1', title: 'Performance', role: 'Violinist & Vocalist',
+          color: '#f472b6', darkColor: '#831843', type: 'ringed', size: 2.2, 
+          detail: "A dual-discipline performer with extensive training in both classical instrumentals and modern vocals.",
+          tags: ["Classical Violin", "Vocals", "Live Performance"],
+          bullets: [
+            "Classically trained violinist.",
+            "Professional vocal training and performance experience.",
+            "Voice-over artist for various media projects."
+          ]
+        },
+        { 
+          id: 'm6', title: 'Theory & Tech', role: 'Producer',
+          color: '#9d174d', darkColor: '#831843', type: 'rocky', size: 1.8, 
+          detail: "Bridging the gap between musical art and audio engineering technology.",
+          tags: ["ABRSM Grade 8", "Audio Engineering", "Arrangement"],
+          bullets: [
+            "Certified ABRSM Grade 8 Music Theory.",
+            "Experience in studio recording and audio mixing.",
+            "Music production and arrangement for digital media."
+          ]
+        },
       ]
     }
   },
   {
-    id: 'psychology',
-    title: 'Psychology',
+    id: 'personal',
+    title: 'Personal',
     position: [-10, 2, -8],
     color: '#f87171',
     darkColor: '#7f1d1d',
     icon: Heart,
     content: {
-      heading: 'Psychology',
-      description: 'Human Behavior',
+      heading: 'Personal Growth',
+      description: 'Psychology & Mentorship',
       planets: [
-        { id: 'ps6', title: 'Psych of Learning', color: '#991b1b', darkColor: '#7f1d1d', type: 'ringed', size: 1.9, detail: "Certified in Psychology of Learning from FedericaX." },
-        { id: 'ps2', title: 'Mentorship', color: '#f87171', darkColor: '#7f1d1d', type: 'rocky', size: 1.6, detail: "Active in community mentorship and advisory roles." },
-        { id: 'ps5', title: 'Mediation', color: '#b91c1c', darkColor: '#7f1d1d', type: 'gas', size: 1.5, detail: "Skilled in conflict resolution and empathetic problem solving." },
-      ]
-    }
-  },
-  {
-    id: 'motorsports',
-    title: 'Motorsports',
-    position: [10, 2, 8],
-    color: '#fbbf24',
-    darkColor: '#78350f',
-    icon: Briefcase,
-    content: {
-      heading: 'Motorsports',
-      description: 'Dynamics & Speed',
-      planets: [
-        { id: 'mo1', title: 'Vehicle Dynamics', color: '#fcd34d', darkColor: '#78350f', type: 'ringed', size: 2.5, detail: "Deep technical interest in racing strategy and vehicle physics." },
-        { id: 'mo6', title: 'Drivers License', color: '#92400e', darkColor: '#78350f', type: 'rocky', size: 1.7, detail: "Class 3 Drivers License (Manual)." },
-      ]
-    }
-  },
-  {
-    id: 'archery',
-    title: 'Archery',
-    position: [-10, 2, 8],
-    color: '#34d399',
-    darkColor: '#064e3b',
-    icon: Target,
-    content: {
-      heading: 'Archery',
-      description: 'Focus & Precision',
-      planets: [
-        { id: 'a1', title: 'Varsity Team', color: '#4ade80', darkColor: '#064e3b', type: 'rocky', size: 1.5, detail: "Competed for SIT and Ngee Ann Polytechnic Varsity Teams." },
-        { id: 'a2', title: 'Half-Colours', color: '#22c55e', darkColor: '#064e3b', type: 'ice', size: 2.1, detail: "Awarded Half-Colours for sporting excellence." },
+        { 
+          id: 'ps1', title: 'Psychology', role: 'Advisor & Mediator',
+          color: '#fca5a5', darkColor: '#7f1d1d', type: 'gas', size: 2.0, 
+          detail: "Applying psychological principles to leadership, mentorship, and daily interactions.",
+          tags: ["FedericaX Cert", "Mediation", "Counseling"],
+          bullets: [
+            "Certified in Psychology of Learning.",
+            "Skilled in conflict resolution and empathetic listening.",
+            "Active community mentor and advisor."
+          ]
+        },
+        { 
+          id: 'mo1', title: 'Motorsports', role: 'Enthusiast',
+          color: '#fbbf24', darkColor: '#78350f', type: 'ringed', size: 2.3, 
+          detail: "A technical passion for vehicle dynamics, racing strategy, and high-performance engineering.",
+          tags: ["Vehicle Dynamics", "Strategy", "Sim Racing"],
+          bullets: [
+            "Deep study of vehicle physics and racing lines.",
+            "Class 3 Drivers License (Manual).",
+            "Interest in competitive racing analytics."
+          ]
+        },
+        { 
+          id: 'a1', title: 'Archery', role: 'Varsity Athlete',
+          color: '#4ade80', darkColor: '#064e3b', type: 'ice', size: 1.6, 
+          detail: "The art of precision and focus, honed through competitive varsity sports.",
+          tags: ["Varsity Team", "Precision", "Discipline"],
+          bullets: [
+            "Competed for SIT and Ngee Ann Polytechnic.",
+            "Awarded Half-Colours for sporting excellence.",
+            "Cultivates extreme mental focus and discipline."
+          ]
+        }
       ]
     }
   },
@@ -133,8 +181,28 @@ const sections: Section[] = [
       heading: 'Awards',
       description: 'Excellence & Service',
       planets: [
-        { id: 'ac1', title: 'Lean Six Sigma', color: '#fef08a', darkColor: '#713f12', type: 'ringed', size: 2.4, detail: "Green Belt Certified for process improvement." },
-        { id: 'ac3', title: 'SAF Ammo Officer', color: '#eab308', darkColor: '#713f12', type: 'gas', size: 1.6, detail: "Served as Ammunition Reliability Officer during National Service." },
+        { 
+          id: 'ac1', title: 'Certifications', role: 'Professional',
+          color: '#fef08a', darkColor: '#713f12', type: 'ringed', size: 2.4, 
+          detail: "Professional accreditations that validate technical and management expertise.",
+          tags: ["Lean Six Sigma", "Green Belt", "Safety"],
+          bullets: [
+            "Lean Six Sigma Green Belt Certified.",
+            "Mastering Systems Thinking in Practice (Open University).",
+            "Apply Workplace Safety and Health in Construction Sites."
+          ]
+        },
+        { 
+          id: 'ac3', title: 'Service', role: 'National Service',
+          color: '#eab308', darkColor: '#713f12', type: 'rocky', size: 1.8, 
+          detail: "Leadership and operational roles undertaken during National Service.",
+          tags: ["Leadership", "Data Analysis", "Media"],
+          bullets: [
+            "SAF Ammunition Reliability Officer: Centralised data for surveillance work plans.",
+            "SAFAC Digital-In-Charge: Directed content for safety awareness.",
+            "Conducted root cause analysis on safety incidents."
+          ]
+        },
       ]
     }
   }
@@ -142,7 +210,6 @@ const sections: Section[] = [
 
 // --- 3D UTILS ---
 
-// REPLACED IMAGE LOADER WITH PROCEDURAL STARS TO FIX CRASH
 function ParticleField() {
   const particles = useRef<THREE.Points>(null);
   const count = 3000;
@@ -202,7 +269,6 @@ function VariedPlanetMesh({ type, color, size }: { type: PlanetType, color: stri
   );
 }
 
-// --- OUTER VIEW (Galaxies) ---
 function SpiralGalaxy({ color, radius = 3 }: { color: string, radius?: number }) {
   const pointsRef = useRef<THREE.Points>(null);
   const [positions, colors] = useMemo(() => {
@@ -284,7 +350,6 @@ function OrbitingGalaxySystem({ section, onClick }: any) {
   );
 }
 
-// --- INNER VIEW (Planets) ---
 function OrbitingPlanetSystem({ planet, onClick, idx, total }: any) {
   const groupRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
@@ -311,7 +376,6 @@ function OrbitingPlanetSystem({ planet, onClick, idx, total }: any) {
 
       <VariedPlanetMesh type={planet.type} color={planet.color} size={planet.size} />
       
-      {/* Label only appears on hover or if it's large */}
       <Text 
         position={[0, planet.size + 1.2, 0]} 
         fontSize={hovered ? 1.5 : 1} 
@@ -462,7 +526,6 @@ export default function AnimatedPortfolio({ introPlaying = false }: { introPlayi
 
   const handlePlanetClick = (planet: Planet, pos: THREE.Vector3) => { 
     setActivePlanet(planet); 
-    // Focus camera on the clicked planet
     if (controlsRef.current) {
       gsap.to(controlsRef.current.target, { x: pos.x, y: pos.y, z: pos.z, duration: 1.5, ease: "power2.out" });
       const offset = pos.clone().normalize().multiplyScalar(8); 
@@ -538,30 +601,63 @@ export default function AnimatedPortfolio({ introPlaying = false }: { introPlayi
         </Suspense>
       </Canvas>
 
-      {/* --- SIDEBAR INFO PANEL --- */}
+      {/* --- RICH SIDEBAR (Updated) --- */}
       {activePlanet && (
-        <div className="fixed top-0 right-0 h-full w-full md:w-96 bg-black/60 backdrop-blur-xl border-l border-white/10 p-8 shadow-2xl z-50 flex flex-col justify-center animate-slide-in-right">
+        <div className="fixed top-0 right-0 h-full w-full md:w-[480px] bg-black/80 backdrop-blur-xl border-l border-white/10 p-8 shadow-2xl z-50 flex flex-col overflow-y-auto animate-slide-in-right">
           <button onClick={() => setActivePlanet(null)} className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors"><X className="w-8 h-8" /></button>
           
-          <div className="space-y-6">
-            <div className="inline-block px-3 py-1 rounded-full bg-white/10 text-xs font-bold tracking-wider text-cyan-400 uppercase">
-              {activePlanet.type.toUpperCase()} PLANET
+          <div className="mt-12 space-y-8">
+            <div>
+              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-900/50 border border-cyan-500/30 text-xs font-bold tracking-wider text-cyan-400 uppercase mb-4">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"/>
+                <span>{activePlanet.type} Planet</span>
+              </div>
+              <h2 className="text-5xl font-black text-white leading-none tracking-tight mb-2" style={{ textShadow: `0 0 40px ${activePlanet.color}40` }}>
+                {activePlanet.title}
+              </h2>
+              {activePlanet.role && <p className="text-xl text-white/80 font-light">{activePlanet.role}</p>}
             </div>
+
+            {activePlanet.date && (
+              <div className="flex items-center space-x-3 text-slate-400">
+                <Calendar className="w-5 h-5 text-cyan-500" />
+                <span className="text-sm font-mono tracking-wide">{activePlanet.date}</span>
+              </div>
+            )}
             
-            <h2 className="text-4xl font-black text-white leading-tight" style={{ textShadow: `0 0 30px ${activePlanet.color}` }}>
-              {activePlanet.title}
-            </h2>
-            
-            <div className="h-1 w-20 rounded-full" style={{ backgroundColor: activePlanet.color }} />
+            <div className="h-px w-full bg-gradient-to-r from-white/20 to-transparent" />
             
             <p className="text-lg text-slate-300 leading-relaxed font-light">
-              {activePlanet.detail || "Detail unavailable."}
+              {activePlanet.detail}
             </p>
 
-            <button className="mt-8 flex items-center space-x-2 text-white hover:text-cyan-400 transition-colors group">
-              <span className="uppercase tracking-widest text-sm font-bold">Learn More</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </button>
+            {/* Bullets */}
+            {activePlanet.bullets && (
+              <ul className="space-y-3">
+                {activePlanet.bullets.map((bullet, i) => (
+                  <li key={i} className="flex items-start space-x-3 text-slate-300">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0" />
+                    <span className="text-sm leading-relaxed">{bullet}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Tags */}
+            {activePlanet.tags && (
+              <div className="pt-4">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center">
+                  <Tag className="w-3 h-3 mr-2" /> Skills & Tech
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {activePlanet.tags.map((tag, i) => (
+                    <span key={i} className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-medium text-slate-300 hover:bg-white/10 hover:border-cyan-500/50 transition-colors cursor-default">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
