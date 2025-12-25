@@ -1,8 +1,8 @@
 import { Suspense, useRef, useState, useMemo, useEffect, useLayoutEffect } from 'react';
-import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
-import { Text, Stars, OrbitControls, Environment, Sparkles, Trail, Sphere, MeshDistortMaterial, RoundedBox, Cylinder } from '@react-three/drei';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Text, Stars, OrbitControls, MeshDistortMaterial, Cylinder, Sphere, Box } from '@react-three/drei';
 import {
-  Menu, X, Zap, Music, Heart, Target, Trophy, Briefcase, ArrowRight, Sparkles as SparklesIcon, ArrowLeft, Calendar, User, Tag
+  Menu, X, Zap, Music, Heart, Target, Trophy, Briefcase, ArrowRight, Sparkles as SparklesIcon, ArrowLeft, Calendar, Tag
 } from 'lucide-react';
 import * as THREE from 'three';
 import gsap from 'gsap';
@@ -13,15 +13,15 @@ type PlanetType = 'gas' | 'rocky' | 'ringed' | 'ice';
 interface Planet {
   id: string;
   title: string;
-  role?: string;       // New: Subtitle or Role
-  date?: string;       // New: Date range
+  role?: string;
+  date?: string;
   color: string;
   darkColor: string;
+  detail: string;
   type: PlanetType;
   size: number;
-  detail: string;      // The main paragraph
-  tags?: string[];     // New: Skills/Tech stack
-  bullets?: string[];  // New: Key achievements list
+  tags?: string[];
+  bullets?: string[];
 }
 
 interface Section {
@@ -38,7 +38,7 @@ interface Section {
   };
 }
 
-// --- CONTENT DATA (Streamlined & Detailed) ---
+// --- CONTENT DATA ---
 const sections: Section[] = [
   {
     id: 'engineering',
@@ -269,6 +269,7 @@ function VariedPlanetMesh({ type, color, size }: { type: PlanetType, color: stri
   );
 }
 
+// --- OUTER VIEW (Galaxies) ---
 function SpiralGalaxy({ color, radius = 3 }: { color: string, radius?: number }) {
   const pointsRef = useRef<THREE.Points>(null);
   const [positions, colors] = useMemo(() => {
@@ -350,6 +351,7 @@ function OrbitingGalaxySystem({ section, onClick }: any) {
   );
 }
 
+// --- INNER VIEW (Planets) ---
 function OrbitingPlanetSystem({ planet, onClick, idx, total }: any) {
   const groupRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
@@ -601,7 +603,6 @@ export default function AnimatedPortfolio({ introPlaying = false }: { introPlayi
         </Suspense>
       </Canvas>
 
-      {/* --- RICH SIDEBAR (Updated) --- */}
       {activePlanet && (
         <div className="fixed top-0 right-0 h-full w-full md:w-[480px] bg-black/80 backdrop-blur-xl border-l border-white/10 p-8 shadow-2xl z-50 flex flex-col overflow-y-auto animate-slide-in-right">
           <button onClick={() => setActivePlanet(null)} className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors"><X className="w-8 h-8" /></button>
@@ -631,7 +632,6 @@ export default function AnimatedPortfolio({ introPlaying = false }: { introPlayi
               {activePlanet.detail}
             </p>
 
-            {/* Bullets */}
             {activePlanet.bullets && (
               <ul className="space-y-3">
                 {activePlanet.bullets.map((bullet, i) => (
@@ -643,7 +643,6 @@ export default function AnimatedPortfolio({ introPlaying = false }: { introPlayi
               </ul>
             )}
 
-            {/* Tags */}
             {activePlanet.tags && (
               <div className="pt-4">
                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center">
